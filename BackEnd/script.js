@@ -49,7 +49,10 @@ function updateUI(row, col, player) {
     `.cell[data-row="${row}"][data-col="${col}"]`
   );
   if (cell) {
-    cell.style.backgroundColor = player;
+    const imagePath = player === 'red'
+      ? '../Assets/RedConnect4.png'
+      : '../Assets/YellowConnect4.png';
+    cell.style.backgroundImage = `url('${imagePath}')`;
   }
 }
 
