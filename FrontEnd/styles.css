@@ -1,0 +1,23 @@
+#game-board { 
+  display: grid;
+  grid-template-columns: repeat(7, 60px);
+  grid-template-rows: repeat(6, 60px);
+  gap: 5px;
+  height:30%;
+  width: 18%;
+  background-color: #238aff;
+  padding: 10px;
+}
+
+.cell {
+  width: 60px;
+  height: 60px;
+  background-color: #eee;
+  border-radius: 50%;
+}
+/* the hover is gonna be changed to make the column darker */
+.cell:hover {
+  background-color: #464646;
+  cursor: pointer;
+}
+
