@@ -8,7 +8,7 @@ const io = new Server(server);
 
 const PORT = 3000;
 
-app.use(express.static('../FrontEnd')); // Serve frontend files
+app.use(express.static('FrontEnd')); // Serve frontend files
 
 let players = [];
 
