@@ -17,6 +17,7 @@ app.get('/', (req, res) => {
 });
 app.get('/ping', (req, res) => {
   res.send('pong');
+  console.log('pong');
 });
 
 io.on('connection', (socket) => {
