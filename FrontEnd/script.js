@@ -11,10 +11,10 @@ let currentPlayer = PLAYER1;
 let assignedPlayer;
 let gameOver = false;
 
-function initializeBoard() {
+ function initializeBoard() {
   document.querySelectorAll('.cell').forEach(cell => {
     cell.addEventListener('click', () => {
-      if (gameOver || currentPlayer !== assignedPlayer) return;
+      if (gameOver) return;
 
       const col = parseInt(cell.dataset.col);
       const success = dropPiece(col, currentPlayer);
@@ -22,7 +22,8 @@ function initializeBoard() {
       if (success) {
         if (checkWin(currentPlayer)) {
           gameOver = true;
-          alert(`${currentPlayer.toUpperCase()} wins!`);
+          setTimeout(() => {
+          alert(`${currentPlayer.toUpperCase()} wins!`); }, 100);
         } else {
           currentPlayer = currentPlayer === PLAYER1 ? PLAYER2 : PLAYER1;
         }
@@ -31,11 +32,11 @@ function initializeBoard() {
   });
 }
 
-function dropPiece(col, player) {
+ function dropPiece(col, player) {
   for (let row = ROWS - 1; row >= 0; row--) {
     if (board[row][col] === EMPTY) {
       board[row][col] = player;
-      updateUI(row, col, player);
+      (updateUI(row, col, player));
       socket.emit('make-move', { row, col, player });
       return true;
     }
@@ -48,8 +49,8 @@ function updateUI(row, col, player) {
   const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
   if (cell) {
     const imagePath = player === 'red'
-      ? './FrontEnd/Assets/RedConnect4.png'
-      : './FrontEnd/Assets/YellowConnect4.png';
+      ? "Assets/RedConnect4.png"
+      : "Assets/YellowConnect4.png";
     cell.style.backgroundImage = `url('${imagePath}')`;
   }
 }
