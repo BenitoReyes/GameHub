@@ -15,6 +15,9 @@ let players = [];
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'FrontEnd/index.html'));
 });
+app.get('/ping', (req, res) => {
+  res.send('pong');
+});
 
 io.on('connection', (socket) => {
     console.log('Player connected:', socket.id);
