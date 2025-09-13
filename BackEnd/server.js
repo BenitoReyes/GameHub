@@ -5,12 +5,16 @@ const { Server } = require('socket.io');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+const path = require('path');
 
 const PORT = 3000;
 
 app.use(express.static('FrontEnd')); // Serve frontend files
 
 let players = [];
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../FrontEnd/index.html'));
+});
 
 io.on('connection', (socket) => {
     console.log('Player connected:', socket.id);
