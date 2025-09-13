@@ -12,7 +12,7 @@ const PORT = 3000;
 app.use(express.static('FrontEnd')); // Serve frontend files
 
 let players = [];
-app.get('*', (req, res) => {
+app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../FrontEnd/index.html'));
 });
 
