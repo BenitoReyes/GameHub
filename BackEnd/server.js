@@ -12,7 +12,9 @@ const PORT = process.env.PORT || 3000;
 app.use(express.static('FrontEnd')); // Serve frontend files
 
 let players = [];
-
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'FrontEnd/index.html'));
+});
 
 io.on('connection', (socket) => {
     console.log('Player connected:', socket.id);
