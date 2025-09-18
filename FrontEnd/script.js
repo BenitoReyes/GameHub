@@ -1,15 +1,24 @@
-const socket = io();
+console.log("StreamChat loaded?", typeof StreamChat);
 
+const socket = io();
 const ROWS = 6;
 const COLS = 7;
 const EMPTY = 0;
 const PLAYER1 = 'red';
 const PLAYER2 = 'yellow';
-
 let board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
 let currentPlayer = PLAYER1;
 let assignedPlayer;
 let gameOver = false;
+let userId, chatToken;
+
+let gameChannel; // will hold the StreamChat channel instance
+
+let STREAM_API_KEY; // globalization of stream api key
+
+let chatClient; // will hold the StreamChat client instance
+
+// INITIALIZATION
 
  function initializeBoard() {
   document.querySelectorAll('.cell').forEach(cell => {
@@ -31,6 +40,9 @@ let gameOver = false;
     });
   });
 }
+
+
+// BOARD FUNCTIONS
 
  function dropPiece(col, player) {
   for (let row = ROWS - 1; row >= 0; row--) {
@@ -55,22 +67,6 @@ function updateUI(row, col, player) {
   }
 }
 
-socket.on('opponent-move', (data) => {
-  board[data.row][data.col] = data.player;
-  updateUI(data.row, data.col, data.player);
-  currentPlayer = assignedPlayer;
-});
-
-socket.on('assign-role', (role) => {
-  assignedPlayer = role;
-  currentPlayer = role;
-  alert(`You are ${role.toUpperCase()}`);
-});
-
-socket.on('room-full', () => {
-  alert('Room is full. Try again later.');
-});
-
 function checkWin(player) {
   for (let row = 0; row < ROWS; row++) {
     for (let col = 0; col <= COLS - 4; col++) {
@@ -86,5 +82,100 @@ function checkWin(player) {
   }
   return false;
 }
+
+
+// SOCKET EVENTS AND STREAM CHAT INTEGRATION
+
+
+socket.on('opponent-move', (data) => {
+  board[data.row][data.col] = data.player;
+  updateUI(data.row, data.col, data.player);
+  currentPlayer = assignedPlayer;
+});
+
+socket.on('chat-auth', async ({ userId: id, token }) => {
+  userId = id;
+  chatToken = token;
+  // Fetch the API key from the server and wait for it before initializing chatClient
+  const res = await fetch("/config");
+  const { apiKey } = await res.json();
+  STREAM_API_KEY = apiKey;
+  chatClient = new StreamChat(STREAM_API_KEY);
+
+});
+
+socket.on('assign-role', async (role) => {
+  assignedPlayer = role;
+  currentPlayer = role;
+  alert(`You are ${role.toUpperCase()}`);
+   // Wait until chat-auth has arrived
+  const waitForChatClient = () =>
+    new Promise(resolve => {
+      const check = () => {
+        if (chatClient && userId && chatToken) {
+          resolve();
+        } else {
+          setTimeout(check, 50);
+        }
+      };
+      check();
+    });
+  await waitForChatClient();
+  // If there's an existing user connection, disconnect first
+    if (chatClient?.user) {
+  await chatClient.disconnect();
+}
+  // Now connect the user after checks 
+  try {
+    await chatClient.connectUser(
+      {
+        id: userId,
+        name: `Player ${role.toUpperCase()}`
+      },
+      chatToken
+    );
+    console.log('Chat connected');
+    // Create or get the channel for the game and for now have a system bot stand in for second player
+    const channel = chatClient.channel('messaging', {
+      members: [userId, 'system-bot'],
+      name: 'Game Chat'
+    });
+    // Wait for the channel to be created and watched
+    await channel.create();
+    await channel.watch();
+    gameChannel = channel;
+    // Set up UI event listeners for sending messages
+    document.getElementById('sendBtn').addEventListener('click', async () => {
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      await gameChannel.sendMessage({ text });
+      input.value = '';
+    });
+    // Listen for new messages
+    gameChannel.on('message.new', (event) => {
+      const msg = event.message;
+      const chatBox = document.getElementById('chatMessages');
+      const div = document.createElement('div');
+      div.textContent = `${msg.user.name}: ${msg.text}`;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    });
+
+    console.log('Channel ready');
+  } catch (err) {
+    console.error('Chat connection failed:', err);
+  }
+
+});
+
+
+socket.on('room-full', () => {
+  alert('Room is full. Try again later.');
+});
+
+
+
 
 initializeBoard();

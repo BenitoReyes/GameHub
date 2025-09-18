@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "The github",
   "main": "FrontEnd/index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node BackEnd/server.js"
@@ -19,8 +20,11 @@
   },
   "homepage": "https://github.com/BenitoReyes/Connect-Four-Online#readme",
   "dependencies": {
+    "dotenv": "^17.2.2",
     "express": "^5.1.0",
+    "nodemon": "^2.0.22",
     "socket.io": "^4.8.1",
-    "nodemon": "^2.0.22"
+    "stream-chat": "^9.19.1",
+    "vite": "^7.1.6"
   }
 }

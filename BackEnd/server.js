@@ -1,24 +1,41 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
+import { StreamChat } from "stream-chat";
+import dotenv from "dotenv";
+dotenv.config({ path: "BackEnd/StreamSecrets.env" });
+import express from "express";
+import http from "http";
+import { Server } from "socket.io";
+import path from "path";
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
-const path = require('path');
-
+const STREAM_API_KEY = process.env.STREAM_API_KEY;
+const STREAM_SECRET = process.env.STREAM_SECRET;
+const serverClient = StreamChat.getInstance(STREAM_API_KEY, STREAM_SECRET);
 const PORT = process.env.PORT || 3000;
 
 app.use(express.static('FrontEnd')); // Serve frontend files
 
 let players = [];
+
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'FrontEnd/index.html'));
 });
 
-io.on('connection', (socket) => {
-    console.log('Player connected:', socket.id);
+// Allows frontend to fetch the Stream API key
+app.get('/config', (req, res) => {
+  res.json({ apiKey:process.env.STREAM_API_KEY});
+});
 
+
+
+
+io.on('connection', async (socket) => {
+    console.log('Player connected:', socket.id);
+    let userId = `user_${socket.id}`;
+    const token = serverClient.createToken(userId); // using StreamChat server SDK
+    socket.emit('chat-auth', { userId, token });
+    await serverClient.upsertUser({ id: 'system-bot', name: 'System Bot' });
     if (players.length < 2) {
         players.push(socket.id);
         const role = players.length === 1 ? 'red' : 'yellow';
@@ -38,5 +55,5 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => {
-    console.log(`✅ Server running at http://localhost:${PORT}`);
+    console.log(`Server running at http://localhost:${PORT}`);
 });
