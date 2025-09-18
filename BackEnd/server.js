@@ -27,19 +27,15 @@ app.get('/config', (req, res) => {
   res.json({ apiKey:process.env.STREAM_API_KEY});
 });
 
-// Creating the system bot for temporary second player
-(async () => {
-  const serverClient = StreamChat.getInstance(STREAM_API_KEY, STREAM_SECRET);
-  await serverClient.upsertUser({ id: 'system-bot', name: 'System Bot' });
-})();
 
 
-io.on('connection', (socket) => {
+
+io.on('connection', async (socket) => {
     console.log('Player connected:', socket.id);
     let userId = `user_${socket.id}`;
     const token = serverClient.createToken(userId); // using StreamChat server SDK
     socket.emit('chat-auth', { userId, token });
-
+    await serverClient.upsertUser({ id: 'system-bot', name: 'System Bot' });
     if (players.length < 2) {
         players.push(socket.id);
         const role = players.length === 1 ? 'red' : 'yellow';
