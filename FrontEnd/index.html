@@ -62,10 +62,18 @@
             <div class="cell" data-row="5" data-col="6"></div>
         </div>
 
-        <script src="/socket.io/socket.io.js"></script>
-        <script src="script.js"></script>
+        
+    </div>
+    <div class="chat-container">
+        <h2>Game Chat</h2>
+        <div id="chatMessages" class="chat-box"></div>
+        <input id="chatInput" type="text" placeholder="Type a message..." />
+        <button id="sendBtn">Send</button>
     </div>
 
+    <script src="stream-chat.bundle.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
     
 </body>
 </html>
