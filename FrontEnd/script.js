@@ -32,7 +32,20 @@ let chatClient; // will hold the StreamChat client instance
         if (checkWin(currentPlayer)) {
           gameOver = true;
           setTimeout(() => {
+          alert(`${currentPlayer.toUpperCase()} wins!`);
+          socket.emit('reset-game');
+          resetGame();
+          }, 100);
+        } else if (isDraw()) {
+          gameOver = true;
+          setTimeout(() => {
+            alert('Draw! Board is full.');
+            socket.emit('reset-game');
+            resetGame();
+          }, 100);
+
           alert(`${currentPlayer.toUpperCase()} wins!`); }, 100);
+
         } else {
           currentPlayer = currentPlayer === PLAYER1 ? PLAYER2 : PLAYER1;
         }
@@ -67,6 +80,19 @@ function updateUI(row, col, player) {
   }
 }
 
+function isBoardFull() {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (board[r][c] == EMPTY) return false;
+    }
+  }
+  return true;
+}
+
+function isDraw() {
+  return isBoardFull();
+}
+
 function checkWin(player) {
   for (let row = 0; row < ROWS; row++) {
     for (let col = 0; col <= COLS - 4; col++) {
@@ -84,13 +110,40 @@ function checkWin(player) {
 }
 
 
+function resetGame() {
+  board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
+  document.querySelectorAll('.cell').forEach(cell => {
+    cell.style.backgroundImage = '';
+  });
+  gameOver = false;
+  currentPlayer = assignedPlayer || PLAYER1;
+}
+
 // SOCKET EVENTS AND STREAM CHAT INTEGRATION
 
 
 socket.on('opponent-move', (data) => {
+  if (gameOver) return;
   board[data.row][data.col] = data.player;
   updateUI(data.row, data.col, data.player);
-  currentPlayer = assignedPlayer;
+
+  if (checkWin(data.player)) {
+    gameOver = true;
+    setTimeout(() => {
+      alert(`${data.player.toUpperCase()} wins!`);
+      socket.emit('reset-game');
+      resetGame();
+    }, 100);
+  } else if (isDraw()) {
+    gameOver = true;
+    setTimeout(() => {
+      alert('Draw! Board is full.');
+      socket.emit('reset-game');
+      resetGame();
+    }, 100);
+  } else {
+    currentPlayer = assignedPlayer;
+  }
 });
 
 socket.on('chat-auth', async ({ userId: id, token }) => {
@@ -174,7 +227,6 @@ socket.on('assign-role', async (role) => {
 socket.on('room-full', () => {
   alert('Room is full. Try again later.');
 });
-
 
 
 
