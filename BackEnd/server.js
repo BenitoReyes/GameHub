@@ -27,6 +27,11 @@ app.get('/config', (req, res) => {
   res.json({ apiKey:process.env.STREAM_API_KEY});
 });
 
+// Creating the system bot for temporary second player
+(async () => {
+  const serverClient = StreamChat.getInstance(STREAM_API_KEY, STREAM_SECRET);
+  await serverClient.upsertUser({ id: 'system-bot', name: 'System Bot' });
+})();
 
 
 
