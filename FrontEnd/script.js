@@ -12,7 +12,6 @@ let assignedPlayer;
 let gameOver = false;
 let userId, chatToken;
 
-
 let gameChannel; // will hold the StreamChat channel instance
 
 let STREAM_API_KEY; // globalization of stream api key
@@ -56,7 +55,6 @@ let chatClient; // will hold the StreamChat client instance
 
 
 // BOARD FUNCTIONS
-
  function dropPiece(col, player) {
   for (let row = ROWS - 1; row >= 0; row--) {
     if (board[row][col] === EMPTY) {
@@ -90,11 +88,12 @@ function isBoardFull() {
   return true;
 }
 
+
 function isDraw() {
   return isBoardFull();
 }
-
-function checkWin(player) {
+function checkWin(player){
+  // Check horizontal wins
   for (let row = 0; row < ROWS; row++) {
     for (let col = 0; col <= COLS - 4; col++) {
       if (
@@ -107,9 +106,60 @@ function checkWin(player) {
       }
     }
   }
-  return false;
-}
 
+  // Check vertical wins
+  for (let col = 0; col < COLS; col++) {
+    for (let row = 0; row <= ROWS - 4; row++) {
+      if (
+        board[row][col] === player &&
+        board[row + 1][col] === player &&
+        board[row + 2][col] === player &&
+        board[row + 3][col] === player
+      ) {
+        return true;
+      }
+    }
+  }
+
+  // Check diagonal (bottom-left to top-right) wins
+  for (let row = 3; row < ROWS; row++) {
+    for (let col = 0; col <= COLS - 4; col++) {
+      if (
+        board[row][col] === player &&
+        board[row - 1][col + 1] === player &&
+        board[row - 2][col + 2] === player &&
+        board[row - 3][col + 3] === player
+      ) {
+        return true;
+      }
+    }
+  }
+
+  // Check diagonal (top-left to bottom-right) wins
+  for (let row = 0; row <= ROWS - 4; row++) {
+    for (let col = 0; col <= COLS - 4; col++) {
+      if (
+        board[row][col] === player &&
+        board[row + 1][col + 1] === player &&
+        board[row + 2][col + 2] === player &&
+        board[row + 3][col + 3] === player
+      ) {
+        return true;
+      }
+    }
+  }
+
+
+return false;
+}
+function resetGame() {
+  board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
+  document.querySelectorAll('.cell').forEach(cell => {
+    cell.style.backgroundImage = '';
+  });
+  gameOver = false;
+  currentPlayer = assignedPlayer || PLAYER1;
+}
 
 
 // SOCKET EVENTS AND STREAM CHAT INTEGRATION
@@ -138,6 +188,7 @@ socket.on('opponent-move', (data) => {
     currentPlayer = assignedPlayer;
   }
 });
+
 socket.on('chat-auth', async ({ userId: id, token }) => {
   userId = id;
   chatToken = token;
@@ -215,13 +266,9 @@ socket.on('assign-role', async (role) => {
 
 });
 
-
 socket.on('room-full', () => {
   alert('Room is full. Try again later.');
 });
-
-
-
 
 function resetGame() {
   board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
