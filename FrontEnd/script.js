@@ -12,7 +12,6 @@ let assignedPlayer;
 let gameOver = false;
 let userId, chatToken;
 
-
 let gameChannel; // will hold the StreamChat channel instance
 
 let STREAM_API_KEY; // globalization of stream api key
@@ -90,6 +89,7 @@ function isBoardFull() {
   return true;
 }
 
+
 function isDraw() {
   return isBoardFull();
 }
@@ -110,6 +110,16 @@ function checkWin(player) {
   return false;
 }
 
+
+
+function resetGame() {
+  board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
+  document.querySelectorAll('.cell').forEach(cell => {
+    cell.style.backgroundImage = '';
+  });
+  gameOver = false;
+  currentPlayer = assignedPlayer || PLAYER1;
+}
 
 
 // SOCKET EVENTS AND STREAM CHAT INTEGRATION
@@ -138,6 +148,7 @@ socket.on('opponent-move', (data) => {
     currentPlayer = assignedPlayer;
   }
 });
+
 socket.on('chat-auth', async ({ userId: id, token }) => {
   userId = id;
   chatToken = token;
@@ -215,13 +226,9 @@ socket.on('assign-role', async (role) => {
 
 });
 
-
 socket.on('room-full', () => {
   alert('Room is full. Try again later.');
 });
-
-
-
 
 function resetGame() {
   board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
