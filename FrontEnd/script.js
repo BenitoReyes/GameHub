@@ -93,7 +93,7 @@ function isDraw() {
   return isBoardFull();
 }
 
-function checkWin(player) {
+  // Check horizontal wins
   for (let row = 0; row < ROWS; row++) {
     for (let col = 0; col <= COLS - 4; col++) {
       if (
@@ -109,8 +109,8 @@ function checkWin(player) {
   return false;
 }
 
-
-
+return false;
+}
 function resetGame() {
   board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
   document.querySelectorAll('.cell').forEach(cell => {
