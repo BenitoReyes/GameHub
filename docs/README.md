@@ -1,8 +1,8 @@
-# Connect Four Online 🎮🟡🔴
+# Connect Four Online 
 
 A real-time, two-player Connect Four game built with Node.js, Express, Socket.IO, and StreamChat. Players are assigned roles (Red or Yellow) and can compete head-to-head while chatting in-game via a dedicated chat channel.
 
-## 🚀 Features
+##  Features
 
 - Real-time multiplayer gameplay using Socket.IO
 - Role assignment and turn-based logic
@@ -10,14 +10,14 @@ A real-time, two-player Connect Four game built with Node.js, Express, Socket.IO
 - Simple UI with Connect Four board and chat interface
 - Secure backend token generation for StreamChat authentication
 
-## 🧱 Tech Stack
+##  Tech Stack
 
 - **Frontend**: HTML, CSS, Vanilla JS
 - **Backend**: Node.js, Express, Socket.IO
 - **Chat**: StreamChat SDK (client + server)
 - **Deployment**: Localhost or cloud platforms (Render, Vercel, etc.)
 
-## 🛠️ Setup Instructions
+##  Setup Instructions
 
 1. Clone the repo:
    ```bash
