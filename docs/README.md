@@ -38,14 +38,26 @@ A real-time, two-player Connect Four game built with Node.js, Express, Socket.IO
    http://localhost:3000
 
 Connect-Four-Online/
+
 ├── Assets/              # Game piece images
+
 ├── BackEnd/             # Express + Socket.IO + StreamChat server
+
 │   └── server.js
-├── FrontEnd/            # Game board UI and chat logic
+
+├── FrontEnd/            # Game board UI and chat logic 
+
 │   └── index.html
-│   └──  script.js       #all game related logic and data manipulation + StreamChat usage
+
+│   └──  script.js       
+
 │   └── styles.css
+
 │   └── streamchat-bundle.js #initializes the browser version of streamchat to the browser 
+
 ├── docs/
+
 │   └── README.md
+
 │   └── ARCHITECTURE.md
+
