@@ -55,7 +55,6 @@ let chatClient; // will hold the StreamChat client instance
 
 
 // BOARD FUNCTIONS
-
  function dropPiece(col, player) {
   for (let row = ROWS - 1; row >= 0; row--) {
     if (board[row][col] === EMPTY) {
@@ -93,7 +92,7 @@ function isBoardFull() {
 function isDraw() {
   return isBoardFull();
 }
-
+function checkWin(player){
   // Check horizontal wins
   for (let row = 0; row < ROWS; row++) {
     for (let col = 0; col <= COLS - 4; col++) {
@@ -151,8 +150,8 @@ function isDraw() {
   }
 
 
-
-
+return false;
+}
 function resetGame() {
   board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
   document.querySelectorAll('.cell').forEach(cell => {
