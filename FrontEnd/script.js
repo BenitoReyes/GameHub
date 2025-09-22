@@ -92,8 +92,8 @@ function isBoardFull() {
 function isDraw() {
   return isBoardFull();
 }
-function checkWin(player){
-  // Check horizontal wins
+
+function checkWin(player) {
   for (let row = 0; row < ROWS; row++) {
     for (let col = 0; col <= COLS - 4; col++) {
       if (
@@ -106,52 +106,11 @@ function checkWin(player){
       }
     }
   }
-
-  // Check vertical wins
-  for (let col = 0; col < COLS; col++) {
-    for (let row = 0; row <= ROWS - 4; row++) {
-      if (
-        board[row][col] === player &&
-        board[row + 1][col] === player &&
-        board[row + 2][col] === player &&
-        board[row + 3][col] === player
-      ) {
-        return true;
-      }
-    }
-  }
-
-  // Check diagonal (bottom-left to top-right) wins
-  for (let row = 3; row < ROWS; row++) {
-    for (let col = 0; col <= COLS - 4; col++) {
-      if (
-        board[row][col] === player &&
-        board[row - 1][col + 1] === player &&
-        board[row - 2][col + 2] === player &&
-        board[row - 3][col + 3] === player
-      ) {
-        return true;
-      }
-    }
-  }
-
-  // Check diagonal (top-left to bottom-right) wins
-  for (let row = 0; row <= ROWS - 4; row++) {
-    for (let col = 0; col <= COLS - 4; col++) {
-      if (
-        board[row][col] === player &&
-        board[row + 1][col + 1] === player &&
-        board[row + 2][col + 2] === player &&
-        board[row + 3][col + 3] === player
-      ) {
-        return true;
-      }
-    }
-  }
-
-
-return false;
+  return false;
 }
+
+
+
 function resetGame() {
   board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
   document.querySelectorAll('.cell').forEach(cell => {
