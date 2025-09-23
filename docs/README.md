@@ -6,7 +6,7 @@ A real-time, two-player Connect Four game built with Node.js, Express, Socket.IO
 
 - Real-time multiplayer gameplay using Socket.IO
 - Role assignment and turn-based logic
-- In-game chat powered by StreamChat (`gaming` channel type)
+- In-game chat powered by StreamChat (`messaging` channel type)
 - Simple UI with Connect Four board and chat interface
 - Secure backend token generation for StreamChat authentication
 
