@@ -15,7 +15,7 @@ A real-time, two-player Connect Four game built with Node.js, Express, Socket.IO
 - **Frontend**: HTML, CSS, Vanilla JS
 - **Backend**: Node.js, Express, Socket.IO
 - **Chat**: StreamChat SDK (client + server)
-- **Deployment**: Localhost or cloud platforms (Render, Vercel, etc.)
+- **Deployment**: Localhost or cloud platform Render
 
 ##  Setup Instructions
 
