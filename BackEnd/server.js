@@ -1,11 +1,14 @@
 import { StreamChat } from "stream-chat";
 import dotenv from "dotenv";
-dotenv.config({ path: "BackEnd/StreamSecrets.env" });
+dotenv.config({ path: "../.env" });
 import express from "express";
 import http from "http";
 import { Server } from "socket.io";
 import path from "path";
+import { PrismaClient } from '@prisma/client'
+import { withAccelerate } from '@prisma/extension-accelerate'
 
+const prisma = new PrismaClient().$extends(withAccelerate())
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
@@ -13,6 +16,9 @@ const STREAM_API_KEY = process.env.STREAM_API_KEY;
 const STREAM_SECRET = process.env.STREAM_SECRET;
 const serverClient = StreamChat.getInstance(STREAM_API_KEY, STREAM_SECRET);
 const PORT = process.env.PORT || 3000;
+const username = 'benito';
+const password = 'securepassword123';
+const user = await prisma.user.create({ data: { password, username } });
 
 app.use(express.static('FrontEnd')); // Serve frontend files
 
