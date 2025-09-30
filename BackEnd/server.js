@@ -28,6 +28,13 @@ app.get('/config', (req, res) => {
 });
 
 
+// Creating the system bot for temporary second player
+(async () => {
+  const serverClient = StreamChat.getInstance(STREAM_API_KEY, STREAM_SECRET);
+  await serverClient.upsertUser({ id: 'system-bot', name: 'System Bot' });
+})();
+
+
 
 
 io.on('connection', async (socket) => {
