@@ -20,6 +20,7 @@ let chatClient; // will hold the StreamChat client instance
 
 // INITIALIZATION
 
+
  function initializeBoard() {
   document.querySelectorAll('.cell').forEach(cell => {
     cell.addEventListener('click', () => {
@@ -32,7 +33,18 @@ let chatClient; // will hold the StreamChat client instance
         if (checkWin(currentPlayer)) {
           gameOver = true;
           setTimeout(() => {
-          alert(`${currentPlayer.toUpperCase()} wins!`); }, 100);
+
+          alert(`${currentPlayer.toUpperCase()} wins!`);
+          socket.emit('reset-game');
+          resetGame();
+          }, 100);
+        } else if (isDraw()) {
+          gameOver = true;
+          setTimeout(() => {
+            alert('Draw! Board is full.');
+            socket.emit('reset-game');
+            resetGame();
+          }, 100);
         } else {
           currentPlayer = currentPlayer === PLAYER1 ? PLAYER2 : PLAYER1;
         }
@@ -43,7 +55,6 @@ let chatClient; // will hold the StreamChat client instance
 
 
 // BOARD FUNCTIONS
-
  function dropPiece(col, player) {
   for (let row = ROWS - 1; row >= 0; row--) {
     if (board[row][col] === EMPTY) {
@@ -67,7 +78,22 @@ function updateUI(row, col, player) {
   }
 }
 
-function checkWin(player) {
+
+function isBoardFull() {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (board[r][c] == EMPTY) return false;
+    }
+  }
+  return true;
+}
+
+
+function isDraw() {
+  return isBoardFull();
+}
+function checkWin(player){
+  // Check horizontal wins
   for (let row = 0; row < ROWS; row++) {
     for (let col = 0; col <= COLS - 4; col++) {
       if (
@@ -80,7 +106,59 @@ function checkWin(player) {
       }
     }
   }
-  return false;
+
+  // Check vertical wins
+  for (let col = 0; col < COLS; col++) {
+    for (let row = 0; row <= ROWS - 4; row++) {
+      if (
+        board[row][col] === player &&
+        board[row + 1][col] === player &&
+        board[row + 2][col] === player &&
+        board[row + 3][col] === player
+      ) {
+        return true;
+      }
+    }
+  }
+
+  // Check diagonal (bottom-left to top-right) wins
+  for (let row = 3; row < ROWS; row++) {
+    for (let col = 0; col <= COLS - 4; col++) {
+      if (
+        board[row][col] === player &&
+        board[row - 1][col + 1] === player &&
+        board[row - 2][col + 2] === player &&
+        board[row - 3][col + 3] === player
+      ) {
+        return true;
+      }
+    }
+  }
+
+  // Check diagonal (top-left to bottom-right) wins
+  for (let row = 0; row <= ROWS - 4; row++) {
+    for (let col = 0; col <= COLS - 4; col++) {
+      if (
+        board[row][col] === player &&
+        board[row + 1][col + 1] === player &&
+        board[row + 2][col + 2] === player &&
+        board[row + 3][col + 3] === player
+      ) {
+        return true;
+      }
+    }
+  }
+
+
+return false;
+}
+function resetGame() {
+  board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
+  document.querySelectorAll('.cell').forEach(cell => {
+    cell.style.backgroundImage = '';
+  });
+  gameOver = false;
+  currentPlayer = assignedPlayer || PLAYER1;
 }
 
 
@@ -88,9 +166,27 @@ function checkWin(player) {
 
 
 socket.on('opponent-move', (data) => {
+  if (gameOver) return;
   board[data.row][data.col] = data.player;
   updateUI(data.row, data.col, data.player);
-  currentPlayer = assignedPlayer;
+
+  if (checkWin(data.player)) {
+    gameOver = true;
+    setTimeout(() => {
+      alert(`${data.player.toUpperCase()} wins!`);
+      socket.emit('reset-game');
+      resetGame();
+    }, 100);
+  } else if (isDraw()) {
+    gameOver = true;
+    setTimeout(() => {
+      alert('Draw! Board is full.');
+      socket.emit('reset-game');
+      resetGame();
+    }, 100);
+  } else {
+    currentPlayer = assignedPlayer;
+  }
 });
 
 socket.on('chat-auth', async ({ userId: id, token }) => {
@@ -170,12 +266,17 @@ socket.on('assign-role', async (role) => {
 
 });
 
-
 socket.on('room-full', () => {
   alert('Room is full. Try again later.');
 });
 
-
-
+function resetGame() {
+  board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
+  document.querySelectorAll('.cell').forEach(cell => {
+    cell.style.backgroundImage = '';
+  });
+  gameOver = false;
+  currentPlayer = assignedPlayer || PLAYER1;
+}
 
 initializeBoard();
