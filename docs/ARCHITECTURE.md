@@ -35,5 +35,3 @@
 
 - Manual testing via browser
 
-
-
