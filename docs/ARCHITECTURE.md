@@ -35,3 +35,4 @@
 
 - Manual testing via browser
 
+[Database ERD.pdf](https://github.com/user-attachments/files/22752355/Database.ERD.pdf)
