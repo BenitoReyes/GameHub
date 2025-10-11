@@ -38,7 +38,7 @@ model RoomParticipant {
   id       Int       @id @default(autoincrement())
   userId   String
   roomId   String
-  role     Role
+  permission     Permission
   joinedAt DateTime  @default(now())
   user     User      @relation(fields: [userId], references: [id])
   room     Room      @relation(fields: [roomId], references: [id])
@@ -47,7 +47,7 @@ model RoomParticipant {
   @@unique([userId, roomId])
 }
 
-enum Role {
+enum Permission {
   HOST
   PLAYER
   SPECTATOR

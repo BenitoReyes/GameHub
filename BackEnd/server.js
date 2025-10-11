@@ -109,6 +109,8 @@ io.on('connection', async (socket) => {
     var cookies = cookie.parse(socket.handshake.headers.cookie || '');
     const token = cookies.token;
     const userId = cookies.userId;
+
+
     socket.on('create-game', async () => {
       const roomId = v4().slice(0,8); // generate a unique room ID
       await prisma.room.create({
@@ -119,27 +121,37 @@ io.on('connection', async (socket) => {
         data: { rooms: { connect: {id:roomId }} }
       });
       await prisma.roomParticipant.create({
-        data: { roomId: roomId, userId: userId, role: 'HOST'}
+        data: { roomId: roomId, userId: userId, permission: 'HOST'}
       });
+      let participant = await prisma.roomParticipant.findUnique({
+        where: { userId_roomId : { userId, roomId } }
+      });
+      console.log(participant);
+      //
+      await prisma.room.update({
+        where: { id: roomId },
+        data: {participants: {connect: { id: participant.id }}}
+      });
+      socket.emit('assign-role', 'red');
       //socket.join(roomId);
       socket.emit('game-created', roomId);
       //players.push(socket.id);
     });
 
+
     socket.on('join-game', async (roomId) => {
         const room = await prisma.room.findUnique({
-            where: { id: roomId }
+            where: { id: roomId },
+            include: { participants: true }
         });
         if (!room) {
             socket.emit('error', 'Room not found');
             return;
         }
-        let roomPartnum = await prisma.roomParticipant.findMany({
-            where: { roomId: roomId, userId: userId }
-        });
-        if (roomPartnum.length >= 2) {
+        let roomPartnum = room.participants.length || 0;
+        if (roomPartnum >= 2) {
             await prisma.roomParticipant.create({
-            data: { roomId: roomId, userId: userId, role: 'SPECTATOR' }
+            data: { roomId: roomId, userId: userId, permission: 'SPECTATOR' }
         });
             socket.emit('assign-role', 'spectator');
             socket.join(roomId);
@@ -147,7 +159,7 @@ io.on('connection', async (socket) => {
             return;
         } else {
             await prisma.roomParticipant.create({
-              data: { roomId: roomId, userId: userId, role: 'PLAYER' }
+              data: { roomId: roomId, userId: userId, permission: 'PLAYER' }
           });
           socket.emit('assign-role', 'yellow');
           socket.emit('game-joined', {roomId, role: 'yellow'} );
@@ -156,9 +168,11 @@ io.on('connection', async (socket) => {
         players.push(socket.id);
     });
 
+
     socket.on('make-move', (data) => {
         socket.broadcast.emit('opponent-move', data);
     });
+
 
     socket.on('disconnect', () => {
         console.log('Player disconnected:', socket.id);

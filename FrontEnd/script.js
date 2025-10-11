@@ -19,7 +19,6 @@ let chatClient; // will hold the StreamChat client instance
 
 // INITIALIZATION
 
-
  function initializeBoard() {
   document.querySelectorAll('.cell').forEach(cell => {
     cell.addEventListener('click', () => {
@@ -52,7 +51,6 @@ let chatClient; // will hold the StreamChat client instance
   });
 }
 
-
 // BOARD FUNCTIONS
  function dropPiece(col, player) {
   for (let row = ROWS - 1; row >= 0; row--) {
@@ -76,7 +74,6 @@ function updateUI(row, col, player) {
     cell.style.backgroundImage = `url('${imagePath}')`;
   }
 }
-
 
 function isBoardFull() {
   for (let r = 0; r < ROWS; r++) {
@@ -201,6 +198,10 @@ socket.on('chat-auth', async ({ userId: id, token }) => {
 
 //REWRITE THIS CAUSE ROLES ARE ASSIGNED SERVER SIDE NOW
 socket.on('assign-role', async (role) => {
+  if (role === 'spectator') {
+    alert('You are a spectator. You cannot make moves.');
+    return;
+  }
   assignedPlayer = role;
   currentPlayer = role;
 });
