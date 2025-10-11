@@ -1,5 +1,4 @@
-console.log("StreamChat loaded?", typeof StreamChat);
-
+// FRONTEND JAVASCRIPT FOR CONNECT 4 WITH STREAM CHAT INTEGRATION
 const socket = io();
 const ROWS = 6;
 const COLS = 7;
@@ -200,11 +199,13 @@ socket.on('chat-auth', async ({ userId: id, token }) => {
 
 });
 
+//REWRITE THIS CAUSE ROLES ARE ASSIGNED SERVER SIDE NOW
 socket.on('assign-role', async (role) => {
   assignedPlayer = role;
   currentPlayer = role;
-  alert(`You are ${role.toUpperCase()}`);
-   // Wait until chat-auth has arrived
+});
+
+socket.on('game-joined', async (roomId) => {
   const waitForChatClient = () =>
     new Promise(resolve => {
       const check = () => {
@@ -263,7 +264,6 @@ socket.on('assign-role', async (role) => {
   } catch (err) {
     console.error('Chat connection failed:', err);
   }
-
 });
 
 socket.on('room-full', () => {

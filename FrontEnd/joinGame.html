@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Join Game</title>
+        <link rel="stylesheet" href="styles.css" />
+    </head>
+    <body>
+        <div class="join-container">
+            <h1>Join a Game Room</h1>
+            <input type="text" id="roomIdInput" placeholder="Enter Room ID" />
+            <button id="joinRoom">Join Room</button>
+        </div>
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+            const socket = io();
+            document.getElementById('joinRoom').addEventListener('click', async () => {
+                const roomId = document.getElementById('roomIdInput').value;
+                socket.emit('join-game', roomId);
+                socket.on('game-joined', ({roomId, role}) => {
+                    console.log('Received:', roomId, role); // debug
+                    location.href = `board.html?roomId=${roomId}&role=${role}`;
+                });
+            });
+        </script>
+    </body>
+</html>

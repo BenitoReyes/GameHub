@@ -16,4 +16,4 @@ export default defineConfig({
   }
 });
 
-// This configuration sets up Vite to bundle the StreamChat library for browser usage by putting it into a file named stream-chat.bundle.js in the FrontEnd directory where index.html can reference it directly.
+// This configuration sets up Vite to bundle the StreamChat library for browser usage by putting it into a file named stream-chat.bundle.js in the FrontEnd directory where html can reference it directly.
