@@ -74,20 +74,38 @@
       <script src="/socket.io/socket.io.js"></script>
       <script src="script.js"></script>
       <script>
-
-        window.addEventListener('DOMContentLoaded', () => {
-            const params = new URLSearchParams(window.location.search);
-            const roomId = params.get('roomId');
-            const role = params.get('role');
+        window.addEventListener('DOMContentLoaded', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomId = urlParams.get('roomId') || sessionStorage.getItem('roomId');
             const userId = sessionStorage.getItem('userId');
             const token = sessionStorage.getItem('token');
+            const role = sessionStorage.getItem('role');
+            const username = sessionStorage.getItem('username');
+            if (!roomId || !userId || !token || !role) {
+            alert("Missing session data. Please rejoin the room.");
+            return;
+            }
+            try {
+            await connectToChat({ roomId, userId, token, role, username });
+            } catch (err) {
+            console.error("Error connecting to chat:", err);
+            }
+            assignedPlayer = role;
+            currentPlayer = 'red'; // red always starts
+            isMyTurn = role === currentPlayer;
+            scriptRoomId = roomId;
+            socket.emit('join-room', scriptRoomId);
 
-            connectToChat({ roomId, userId, token });
-            if(role == 'spectator'){
+            // Optional role alert
+            if (role === 'spectator') {
                 alert(`Room ID: ${roomId}, and Role: SPECTATOR`);
             } else {
                 alert(`Room ID: ${roomId}, and Role: ${role}`);
             }
+
+            // Now that DOM is ready and role is assigned, initialize board
+            initializeBoard();
+
         });
       </script>
       

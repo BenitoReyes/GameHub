@@ -13,8 +13,8 @@
             <button id="joinRoom">Join Room</button>
         </div>
         <script src="/socket.io/socket.io.js"></script>
+        <script src="script.js"></script>
         <script>
-            const socket = io();
             document.getElementById('joinRoom').addEventListener('click', async () => {
                 const roomId = document.getElementById('roomIdInput').value;
                 socket.emit('join-game', roomId);

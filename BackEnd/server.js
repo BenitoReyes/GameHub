@@ -138,14 +138,22 @@ io.on('connection', async (socket) => {
           created_by_id: userId
         });
         // Wait for the channel to be created and watched
+        let user = await prisma.user.findUnique({
+          where: {id: userId}
+        });
+        let username = user.username;
       await channel.create();
       await channel.watch();
+      socket.join(roomId);
       socket.emit('assign-role', 'red');
-      //socket.join(roomId);
-      socket.emit('game-created', {roomId, userId, token});
+      socket.emit('game-created', {roomId, userId, token, role:'red', username});
       //players.push(socket.id);
     });
 
+    socket.on('join-room', (roomId) => {
+      socket.join(roomId);
+      console.log(`Socket ${socket.id} rejoined room ${roomId}`);
+    });
 
     socket.on('join-game', async (roomId) => {
       const token = serverClient.createToken(userId)
@@ -158,21 +166,24 @@ io.on('connection', async (socket) => {
             return;
         }
         let roomPartnum = room.participants.length || 0;
+        let user = await prisma.user.findUnique({
+          where: {id: userId}
+        });
+        let username = user.username;
         if (roomPartnum >= 2) {
             await prisma.roomParticipant.create({
             data: { roomId: roomId, userId: userId, permission: 'SPECTATOR' }
         });
             socket.emit('assign-role', 'spectator');
             socket.join(roomId);
-            socket.emit('game-joined', {roomId, userId, token, role: 'spectator'});
-            return;
+            socket.emit('game-joined', {roomId, userId, token, role: 'spectator', username});
         } else {
             await prisma.roomParticipant.create({
               data: { roomId: roomId, userId: userId, permission: 'PLAYER' }
           });
           socket.emit('assign-role', 'yellow');
           socket.join(roomId);
-          socket.emit('game-joined', {roomId, userId, token, role: 'yellow'} );
+          socket.emit('game-joined', {roomId, userId, token, role: 'yellow', username} );
         }
         const channel = serverClient.channel('messaging', roomId);
         await channel.addMembers([userId]);
@@ -180,8 +191,10 @@ io.on('connection', async (socket) => {
     });
 
 
-    socket.on('make-move', (data) => {
-        socket.broadcast.emit('opponent-move', data);
+    socket.on('make-move', ({data, roomId}) => {
+      console.log(`Move received in room ${roomId}:`, data);
+      console.log(`Socket rooms:`, Array.from(socket.rooms));
+      socket.to(roomId).emit('opponent-move', data);
     });
 
 
