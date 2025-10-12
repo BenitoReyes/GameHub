@@ -18,6 +18,198 @@ let STREAM_API_KEY; // globalization of stream api key
 
 let chatClient; // will hold the StreamChat client instance
 
+// Scores (kept in-memory while the page is open)
+let redScore = 0;
+let yellowScore = 0;
+
+function renderScores() {
+  let redEl = document.getElementById('redScore');
+  let yellowEl = document.getElementById('yellowScore');
+
+  if (!redEl) {
+    redEl = document.createElement('div');
+    redEl.id = 'redScore';
+    Object.assign(redEl.style, {
+      position: 'fixed',
+      top: '8px',
+      left: '12px',
+      fontSize: '48px',
+      fontWeight: '600',
+      color: 'red',
+      background: 'rgba(255,255,255,0.8)',
+      padding: '6px 10px',
+      borderRadius: '6px',
+      zIndex: '1000'
+    });
+    document.body.appendChild(redEl);
+  }
+
+  if (!yellowEl) {
+    yellowEl = document.createElement('div');
+    yellowEl.id = 'yellowScore';
+    Object.assign(yellowEl.style, {
+      position: 'fixed',
+      top: '8px',
+      right: '12px',
+      fontSize: '48px',
+      fontWeight: '600',
+      color: 'goldenrod',
+      background: 'rgba(255,255,255,0.8)',
+      padding: '6px 10px',
+      borderRadius: '6px',
+      zIndex: '1000'
+    });
+    document.body.appendChild(yellowEl);
+  }
+
+  redEl.textContent = `Red: ${redScore}`;
+  yellowEl.textContent = `Yellow: ${yellowScore}`;
+}
+
+// initialize scores UI
+renderScores();
+
+// Result modal helper: shows a message and a "Play Again" button
+function showResultModal(message) {
+  let modal = document.getElementById('resultModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'resultModal';
+    modal.className = 'modal-overlay';
+
+    const content = document.createElement('div');
+    content.id = 'resultContent';
+    content.className = 'modal-content';
+
+    const msg = document.createElement('p');
+    msg.id = 'resultMessage';
+    msg.style.marginBottom = '16px';
+    content.appendChild(msg);
+
+    const btn = document.createElement('button');
+    btn.id = 'playAgainBtn';
+    btn.textContent = 'Play Again';
+    Object.assign(btn.style, {
+      padding: '8px 14px',
+      fontSize: '14px',
+      cursor: 'pointer',
+      borderRadius: '6px',
+      border: 'none',
+      background: '#007bff',
+      color: '#fff'
+    });
+
+    btn.addEventListener('click', () => {
+      modal.style.display = 'none';
+      // Tell server and reset locally
+      try { socket.emit('reset-game'); } catch (e) { /* ignore */ }
+      try { resetGame(); } catch (e) { /* ignore */ }
+    });
+
+    content.appendChild(btn);
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+  }
+
+  // animation CSS moved to styles.css
+
+  const msgEl = document.getElementById('resultMessage');
+  if (msgEl) msgEl.textContent = message;
+  if (msgEl) {
+    const lower = (message || '').toLowerCase();
+    if (lower.includes('red')) {
+      msgEl.style.color = 'red';
+    } else if (lower.includes('yellow')) {
+      msgEl.style.color = 'goldenrod';
+    } else {
+      msgEl.style.color = '#666';
+    }
+  }
+
+  // choose animation based on message
+  const contentEl = document.getElementById('resultContent');
+  if (contentEl) {
+    contentEl.classList.remove('bounce', 'fade-in');
+    contentEl.classList.add('modal-anim-content');
+    const lower = (message || '').toLowerCase();
+    if (lower.includes('win') || lower.includes('wins')) {
+      contentEl.classList.add('bounce');
+    } else {
+      // draw or neutral
+      contentEl.classList.add('fade-in');
+    }
+  }
+
+  modal.style.display = 'flex';
+}
+
+// Role modal: informs the user which player they are, using the same blue button style
+function showRoleModal(message) {
+  let modal = document.getElementById('roleModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'roleModal';
+    Object.assign(modal.style, {
+      position: 'fixed',
+      top: '0',
+      left: '0',
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      backdropFilter: 'blur(5px)',
+      webkitBackdropFilter: 'blur(5px)',
+      zIndex: '9999',
+    });
+
+    const content = document.createElement('div');
+    Object.assign(content.style, {
+      background: '#fff',
+      padding: '20px',
+      borderRadius: '8px',
+      textAlign: 'center',
+      minWidth: '260px',
+      boxShadow: '0 6px 20px rgba(0,0,0,0.3)'
+    });
+
+    const msg = document.createElement('p');
+    msg.id = 'roleMessage';
+    msg.style.marginBottom = '16px';
+    content.appendChild(msg);
+
+    const btn = document.createElement('button');
+    btn.id = 'roleContinueBtn';
+    btn.textContent = 'Continue';
+    Object.assign(btn.style, {
+      padding: '8px 14px',
+      fontSize: '14px',
+      cursor: 'pointer',
+      borderRadius: '6px',
+      border: 'none',
+      background: '#007bff',
+      color: '#fff'
+    });
+
+    btn.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
+
+    content.appendChild(btn);
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+  }
+
+  const msgEl = document.getElementById('roleMessage');
+  if (msgEl) msgEl.textContent = message;
+  const contentEl = modal.querySelector('div');
+  if (contentEl) {
+    contentEl.classList.add('modal-anim-content', 'fade-in');
+  }
+  modal.style.display = 'flex';
+}
+
 // INITIALIZATION
 
 
@@ -32,18 +224,16 @@ let chatClient; // will hold the StreamChat client instance
       if (success) {
         if (checkWin(currentPlayer)) {
           gameOver = true;
+          // increment score for current player
+          if (currentPlayer === PLAYER1) redScore++; else yellowScore++;
+          renderScores();
           setTimeout(() => {
-
-          alert(`${currentPlayer.toUpperCase()} wins!`);
-          socket.emit('reset-game');
-          resetGame();
+            showResultModal(`${currentPlayer.toUpperCase()} wins!`);
           }, 100);
         } else if (isDraw()) {
           gameOver = true;
           setTimeout(() => {
-            alert('Draw! Board is full.');
-            socket.emit('reset-game');
-            resetGame();
+            showResultModal('Draw!');
           }, 100);
         } else {
           currentPlayer = currentPlayer === PLAYER1 ? PLAYER2 : PLAYER1;
@@ -172,17 +362,16 @@ socket.on('opponent-move', (data) => {
 
   if (checkWin(data.player)) {
     gameOver = true;
+    // increment score for winning player
+    if (data.player === PLAYER1) redScore++; else yellowScore++;
+    renderScores();
     setTimeout(() => {
-      alert(`${data.player.toUpperCase()} wins!`);
-      socket.emit('reset-game');
-      resetGame();
+      showResultModal(`${data.player.toUpperCase()} wins!`);
     }, 100);
   } else if (isDraw()) {
     gameOver = true;
     setTimeout(() => {
-      alert('Draw! Board is full.');
-      socket.emit('reset-game');
-      resetGame();
+      showResultModal('Draw! Board is full.');
     }, 100);
   } else {
     currentPlayer = assignedPlayer;
@@ -203,7 +392,7 @@ socket.on('chat-auth', async ({ userId: id, token }) => {
 socket.on('assign-role', async (role) => {
   assignedPlayer = role;
   currentPlayer = role;
-  alert(`You are ${role.toUpperCase()}`);
+  showRoleModal(`You are ${role.toUpperCase()}`);
    // Wait until chat-auth has arrived
   const waitForChatClient = () =>
     new Promise(resolve => {
