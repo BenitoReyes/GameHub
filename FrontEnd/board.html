@@ -64,26 +64,31 @@
 
           
       </div>
-      <!--<div class="chat-container">
+      <div class="chat-container">
           <h2>Game Chat</h2>
           <div id="chatMessages" class="chat-box"></div>
           <input id="chatInput" type="text" placeholder="Type a message..." />
           <button id="sendBtn">Send</button>
-      </div>-->
+      </div>
       <script src="stream-chat.bundle.js"></script>
       <script src="/socket.io/socket.io.js"></script>
       <script src="script.js"></script>
       <script>
-        params = new URLSearchParams(window.location.search);
-        const roomId = params.get('roomId');
-        const role = params.get('role');
-        if(role == 'spectator'){
-            alert(`Room ID: ${roomId}, and Role: SPECTATOR`);
-        } else {
-            alert(`Room ID: ${roomId}, and Role: ${role}`);
-        }
-        
-        socket.emit('assign-role', role);
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const roomId = params.get('roomId');
+            const role = params.get('role');
+            const userId = sessionStorage.getItem('userId');
+            const token = sessionStorage.getItem('token');
+
+            connectToChat({ roomId, userId, token });
+            if(role == 'spectator'){
+                alert(`Room ID: ${roomId}, and Role: SPECTATOR`);
+            } else {
+                alert(`Room ID: ${roomId}, and Role: ${role}`);
+            }
+        });
       </script>
       
   </body>

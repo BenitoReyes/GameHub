@@ -12,14 +12,12 @@
             <button id="createRoom"> Create Room</button>
             <button id="joinRoom"> Join Room</button>
         </div>
-        <script src="/socket.io/socket.io.js"></script>
+        <script src="stream-chat.bundle.js"></script>
+      <script src="/socket.io/socket.io.js"></script>
+      <script src="script.js"></script>
         <script>
-            const socket = io();
             document.getElementById('createRoom').addEventListener('click', async () => {
                 socket.emit('create-game');
-                socket.on('game-created', (roomId) => {
-                    location.href = `board.html?roomId=${roomId}&role=${'red'}`;
-                });
             });
             document.getElementById('joinRoom').addEventListener('click', async () => {
                 location.href = 'joinGame.html';

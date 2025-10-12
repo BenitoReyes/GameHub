@@ -1,3 +1,4 @@
+
 // FRONTEND JAVASCRIPT FOR CONNECT 4 WITH STREAM CHAT INTEGRATION
 const socket = io();
 const ROWS = 6;
@@ -5,6 +6,7 @@ const COLS = 7;
 const EMPTY = 0;
 const PLAYER1 = 'red';
 const PLAYER2 = 'yellow';
+let USERS = {}; // to store userId to username mapping
 let board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
 let currentPlayer = PLAYER1;
 let assignedPlayer;
@@ -19,7 +21,7 @@ let chatClient; // will hold the StreamChat client instance
 
 // INITIALIZATION
 
- function initializeBoard() {
+function initializeBoard() {
   document.querySelectorAll('.cell').forEach(cell => {
     cell.addEventListener('click', () => {
       if (gameOver) return;
@@ -52,7 +54,7 @@ let chatClient; // will hold the StreamChat client instance
 }
 
 // BOARD FUNCTIONS
- function dropPiece(col, player) {
+function dropPiece(col, player) {
   for (let row = ROWS - 1; row >= 0; row--) {
     if (board[row][col] === EMPTY) {
       board[row][col] = player;
@@ -84,10 +86,10 @@ function isBoardFull() {
   return true;
 }
 
-
 function isDraw() {
   return isBoardFull();
 }
+
 function checkWin(player){
   // Check horizontal wins
   for (let row = 0; row < ROWS; row++) {
@@ -145,21 +147,11 @@ function checkWin(player){
     }
   }
 
-
 return false;
-}
-function resetGame() {
-  board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
-  document.querySelectorAll('.cell').forEach(cell => {
-    cell.style.backgroundImage = '';
-  });
-  gameOver = false;
-  currentPlayer = assignedPlayer || PLAYER1;
 }
 
 
 // SOCKET EVENTS AND STREAM CHAT INTEGRATION
-
 
 socket.on('opponent-move', (data) => {
   if (gameOver) return;
@@ -185,17 +177,6 @@ socket.on('opponent-move', (data) => {
   }
 });
 
-socket.on('chat-auth', async ({ userId: id, token }) => {
-  userId = id;
-  chatToken = token;
-  // Fetch the API key from the server and wait for it before initializing chatClient
-  const res = await fetch("/config");
-  const { apiKey } = await res.json();
-  STREAM_API_KEY = apiKey;
-  chatClient = new StreamChat(STREAM_API_KEY);
-
-});
-
 //REWRITE THIS CAUSE ROLES ARE ASSIGNED SERVER SIDE NOW
 socket.on('assign-role', async (role) => {
   if (role === 'spectator') {
@@ -206,67 +187,74 @@ socket.on('assign-role', async (role) => {
   currentPlayer = role;
 });
 
-socket.on('game-joined', async (roomId) => {
-  const waitForChatClient = () =>
-    new Promise(resolve => {
-      const check = () => {
-        if (chatClient && userId && chatToken) {
-          resolve();
-        } else {
-          setTimeout(check, 50);
-        }
-      };
-      check();
-    });
-  await waitForChatClient();
-  // If there's an existing user connection, disconnect first
-    if (chatClient?.user) {
-  await chatClient.disconnect();
-}
-  // Now connect the user after checks 
-  try {
-    await chatClient.connectUser(
-      {
-        id: userId,
-        name: `Player ${role.toUpperCase()}`
-      },
-      chatToken
-    );
-    console.log('Chat connected');
-    // Create or get the channel for the game and for now have a system bot stand in for second player
-    const channel = chatClient.channel('messaging', {
-      members: [userId, 'system-bot'],
-      name: 'Game Chat'
-    });
-    // Wait for the channel to be created and watched
-    await channel.create();
-    await channel.watch();
-    gameChannel = channel;
-    // Set up UI event listeners for sending messages
-    document.getElementById('sendBtn').addEventListener('click', async () => {
-      const input = document.getElementById('chatInput');
-      const text = input.value.trim();
-      if (!text) return;
+async function connectToChat({ roomId, userId, token }) {
+  const res = await fetch("/config");
+  const { apiKey } = await res.json();   // destructure the key
+  STREAM_API_KEY = apiKey;
+  chatClient = StreamChat.getInstance(STREAM_API_KEY);
 
-      await gameChannel.sendMessage({ text });
-      input.value = '';
-    });
-    // Listen for new messages
-    gameChannel.on('message.new', (event) => {
-      const msg = event.message;
-      const chatBox = document.getElementById('chatMessages');
-      const div = document.createElement('div');
-      div.textContent = `${msg.user.name}: ${msg.text}`;
-      chatBox.appendChild(div);
-      chatBox.scrollTop = chatBox.scrollHeight;
-    });
-
-    console.log('Channel ready');
-  } catch (err) {
-    console.error('Chat connection failed:', err);
+  if (chatClient?.user) {
+    await chatClient.disconnect();
   }
+
+  await chatClient.connectUser(
+    { id: userId, name: `Player ${(assignedPlayer || 'unknown').toUpperCase()}` },
+    token
+  );
+
+  const channel = chatClient.channel('messaging', roomId);
+  await channel.watch();
+  gameChannel = channel; // assign globally
+  console.log('Chat connected and channel ready');
+  channel.on('message.new', event => {
+  const { user, text } = event.message;
+  const username = USERS?.[user.id] || user.name || user.id;
+  const chatBox = document.getElementById('chatMessages');
+  if (!chatBox) return;
+  const messageElem = document.createElement('div');
+  messageElem.textContent = `${username}: ${text}`;
+  chatBox.appendChild(messageElem);
+  chatBox.scrollTop = chatBox.scrollHeight;
 });
 
+// Enable send button
+const sendBtn = document.getElementById('sendBtn');
+const input = document.getElementById('chatInput');
+if (sendBtn && input) {
+  sendBtn.disabled = false;
+  sendBtn.addEventListener('click', async () => {
+    const message = input.value.trim();
+    if (message) {
+      await channel.sendMessage({ text: message });
+      input.value = '';
+    }
+  });
+}
+
+  return { chatClient, gameChannel };
+}
+
+socket.on('game-created', async ({ roomId, userId, token }) => {
+  console.log("game created");
+  try {
+    chatClient = (await connectToChat({ roomId, userId, token })).chatClient
+    location.href = `board.html?roomId=${roomId}&role=${'red'}`;
+} catch (err) {
+  console.error('Error in connectToChat:', err);
+}
+
+});
+
+socket.on('game-joined', async ({ roomId, userId, token, role }) => {
+  try {
+  chatClient = (await connectToChat({ roomId, userId, token })).chatClient
+  location.href = `board.html?roomId=${roomId}&role=${role}`;
+  console.log('Chat connected');
+} catch (err) {
+  console.error('Error in connectToChat:', err);
+}
+});
+  
 socket.on('room-full', () => {
   alert('Room is full. Try again later.');
 });

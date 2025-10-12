@@ -43,20 +43,19 @@ app.get('/config', (req, res) => {
       await serverClient.upsertUser({id: userId, name: user.username});
       const token = serverClient.createToken(userId); // using StreamChat server SDK 'userId', userId
       console.log("User created with ID:", userId);
-      res.setHeader('Set-Cookie', cookie.serialize('userId', userId, {
-        //local host reasons
-        httpOnly: true,
-        secure: false,       // keep false for localhost dev
-        sameSite: 'Lax',     // less restrictive than Strict
-        path: '/', 
-        maxAge: 60 * 60 * 24, // 1 day
-      }), cookie.serialize('token', token, {
-        httpOnly: true,
-        secure: false,       // keep false for localhost dev
-        sameSite: 'Lax',     // less restrictive than Strict
-        path: '/', 
-        maxAge: 60 * 60 * 24, // 1 day
-        }));
+      res.setHeader('Set-Cookie', [
+        cookie.serialize('userId', user.id, {
+          httpOnly: false,
+          secure: false,
+          maxAge: 60 * 60 * 24,
+        }),
+        cookie.serialize('token', token, {
+          httpOnly: false,
+          secure: false,
+          maxAge: 60 * 60 * 24,
+        })
+      ]);
+
       res.redirect('index.html');
     } catch (error) {
       console.error('Error during signup:', error);
@@ -77,16 +76,18 @@ app.post('/login', async (req, res) => {
       if(!validPassword){
         return res.status(400).json({error: 'Invalid password'});
       } else {
-        res.setHeader('Set-Cookie', cookie.serialize('token', serverClient.createToken(user.id), {
-          // bad security fior local reasons
-        httpOnly: false,
-        secure: false,
-        maxAge: 60 * 60 * 24, // 1 day
-      }), cookie.serialize('userId', user.id, {
-        httpOnly: false,
-        secure: false,
-        maxAge: 60 * 60 * 24, // 1 day
-        }));
+        res.setHeader('Set-Cookie', [
+        cookie.serialize('userId', user.id, {
+          httpOnly: false,
+          secure: false,
+          maxAge: 60 * 60 * 24,
+        }),
+        cookie.serialize('token', serverClient.createToken(user.id), {
+          httpOnly: false,
+          secure: false,
+          maxAge: 60 * 60 * 24,
+        })
+      ]);
         res.redirect('gameCreate.html');
       }
     }
@@ -99,20 +100,19 @@ app.post('/login', async (req, res) => {
 
 
 // Creating the system bot for temporary second player
-/*(async () => {
+(async () => {
   const serverClient = StreamChat.getInstance(STREAM_API_KEY, STREAM_SECRET);
   await serverClient.upsertUser({ id: 'system-bot', name: 'System Bot' });
-})();*/
+})();
 
 //once the backend and frontend are connected via socket.io, at the very start of the projects lifecycle
 io.on('connection', async (socket) => {
     var cookies = cookie.parse(socket.handshake.headers.cookie || '');
-    const token = cookies.token;
     const userId = cookies.userId;
-
 
     socket.on('create-game', async () => {
       const roomId = v4().slice(0,8); // generate a unique room ID
+      const token = serverClient.createToken(userId)
       await prisma.room.create({
         data: { id: roomId, host: {connect: {id:userId}}, isPublic: false }
       });
@@ -126,20 +126,29 @@ io.on('connection', async (socket) => {
       let participant = await prisma.roomParticipant.findUnique({
         where: { userId_roomId : { userId, roomId } }
       });
-      console.log(participant);
-      //
+      
       await prisma.room.update({
         where: { id: roomId },
         data: {participants: {connect: { id: participant.id }}}
       });
+      const channel = serverClient.channel('messaging', roomId, {
+
+          members: [userId, 'system-bot'],
+          name: 'Game Chat',
+          created_by_id: userId
+        });
+        // Wait for the channel to be created and watched
+      await channel.create();
+      await channel.watch();
       socket.emit('assign-role', 'red');
       //socket.join(roomId);
-      socket.emit('game-created', roomId);
+      socket.emit('game-created', {roomId, userId, token});
       //players.push(socket.id);
     });
 
 
     socket.on('join-game', async (roomId) => {
+      const token = serverClient.createToken(userId)
         const room = await prisma.room.findUnique({
             where: { id: roomId },
             include: { participants: true }
@@ -155,16 +164,18 @@ io.on('connection', async (socket) => {
         });
             socket.emit('assign-role', 'spectator');
             socket.join(roomId);
-            socket.emit('game-joined', {roomId, role: 'spectator'});
+            socket.emit('game-joined', {roomId, userId, token, role: 'spectator'});
             return;
         } else {
             await prisma.roomParticipant.create({
               data: { roomId: roomId, userId: userId, permission: 'PLAYER' }
           });
           socket.emit('assign-role', 'yellow');
-          socket.emit('game-joined', {roomId, role: 'yellow'} );
+          socket.join(roomId);
+          socket.emit('game-joined', {roomId, userId, token, role: 'yellow'} );
         }
-        socket.join(roomId);
+        const channel = serverClient.channel('messaging', roomId);
+        await channel.addMembers([userId]);
         players.push(socket.id);
     });
 

@@ -18,10 +18,6 @@
             document.getElementById('joinRoom').addEventListener('click', async () => {
                 const roomId = document.getElementById('roomIdInput').value;
                 socket.emit('join-game', roomId);
-                socket.on('game-joined', ({roomId, role}) => {
-                    console.log('Received:', roomId, role); // debug
-                    location.href = `board.html?roomId=${roomId}&role=${role}`;
-                });
             });
         </script>
     </body>
