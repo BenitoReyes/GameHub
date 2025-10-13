@@ -75,6 +75,8 @@
       <script src="script.js"></script>
       <script>
         window.addEventListener('DOMContentLoaded', async () => {
+            window.IS_BOARD_PAGE = true;
+            renderScores();
             const urlParams = new URLSearchParams(window.location.search);
             const roomId = urlParams.get('roomId') || sessionStorage.getItem('roomId');
             const userId = sessionStorage.getItem('userId');
@@ -97,7 +99,7 @@
             socket.emit('join-room', scriptRoomId);
 
             // Optional role alert
-            socket.emit('assign-role', role);
+            showRoleModal(role);
             socket.on('sync-board', (boardData) => {
             board = boardData;
             updateReloadedUI(board); // ← this should redraw the board

@@ -26,7 +26,10 @@ let yellowScore = 0;
 function renderScores() {
   let redEl = document.getElementById('redScore');
   let yellowEl = document.getElementById('yellowScore');
-
+  if (typeof window.IS_BOARD_PAGE === 'undefined') {
+  window.IS_BOARD_PAGE = window.location.href.includes('board.html');
+  }
+  if(window.IS_BOARD_PAGE){
   if (!redEl) {
     redEl = document.createElement('div');
     redEl.id = 'redScore';
@@ -65,6 +68,7 @@ function renderScores() {
 
   redEl.textContent = `Red: ${redScore}`;
   yellowEl.textContent = `Yellow: ${yellowScore}`;
+  }
 }
 
 // initialize scores UI
@@ -405,12 +409,6 @@ socket.on('opponent-move', (data) => {
   }
 });
 
-//REWRITE THIS CAUSE ROLES ARE ASSIGNED SERVER SIDE NOW
-socket.on('assign-role', async (role) => {
-  assignedPlayer = role;
-  currentPlayer = role;
-  showRoleModal(`You are ${role.toUpperCase()}`);
-});
 
 async function connectToChat({ roomId, userId, token, role, username }) {
   const res = await fetch("/config");
