@@ -406,11 +406,11 @@ socket.on('opponent-move', (data) => {
 });
 
 //REWRITE THIS CAUSE ROLES ARE ASSIGNED SERVER SIDE NOW
-/*socket.on('assign-role', async (role) => {
+socket.on('assign-role', async (role) => {
   assignedPlayer = role;
   currentPlayer = role;
   showRoleModal(`You are ${role.toUpperCase()}`);
-});*/
+});
 
 async function connectToChat({ roomId, userId, token, role, username }) {
   const res = await fetch("/config");

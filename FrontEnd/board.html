@@ -97,11 +97,7 @@
             socket.emit('join-room', scriptRoomId);
 
             // Optional role alert
-            if (role === 'spectator') {
-                alert(`Room ID: ${roomId}, and Role: SPECTATOR`);
-            } else {
-                alert(`Room ID: ${roomId}, and Role: ${role}`);
-            }
+            socket.emit('assign-role', role);
             socket.on('sync-board', (boardData) => {
             board = boardData;
             updateReloadedUI(board); // ← this should redraw the board
