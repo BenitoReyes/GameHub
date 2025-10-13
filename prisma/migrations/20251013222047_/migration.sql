@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "public"."Role" AS ENUM ('HOST', 'PLAYER', 'SPECTATOR');
+CREATE TYPE "public"."Permission" AS ENUM ('HOST', 'PLAYER', 'SPECTATOR');
 
 -- CreateTable
 CREATE TABLE "public"."User" (
@@ -17,6 +17,7 @@ CREATE TABLE "public"."Room" (
     "hostId" TEXT NOT NULL,
     "isPublic" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "board" JSONB NOT NULL,
 
     CONSTRAINT "Room_pkey" PRIMARY KEY ("id")
 );
@@ -37,7 +38,7 @@ CREATE TABLE "public"."RoomParticipant" (
     "id" SERIAL NOT NULL,
     "userId" TEXT NOT NULL,
     "roomId" TEXT NOT NULL,
-    "role" "public"."Role" NOT NULL,
+    "permission" "public"."Permission" NOT NULL,
     "joinedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "RoomParticipant_pkey" PRIMARY KEY ("id")

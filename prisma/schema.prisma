@@ -23,6 +23,7 @@ model Room {
   isPublic     Boolean           @default(true)
   createdAt    DateTime          @default(now())
   host         User              @relation("RoomHost", fields: [hostId], references: [id])
+  board        Json             // Stores the 6x7 board as a 2D array
   participants RoomParticipant[]
 }
 

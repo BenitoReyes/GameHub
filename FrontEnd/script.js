@@ -92,6 +92,28 @@ function updateUI(row, col, player) {
   }
 }
 
+function updateReloadedUI(board) {
+  let redCount = 0;
+  let yellowCount = 0;
+
+  for (let row = 0; row < ROWS; row++) {
+    for (let col = 0; col < COLS; col++) {
+      const player = board[row][col];
+      if (player !== EMPTY) {
+        updateUI(row, col, player);
+        if (player === PLAYER1) redCount++;
+        if (player === PLAYER2) yellowCount++;
+      }
+    }
+  }
+
+  // Determine whose turn it is
+  currentPlayer = redCount <= yellowCount ? PLAYER1 : PLAYER2;
+  isMyTurn = assignedPlayer === currentPlayer;
+}
+
+
+
 function isBoardFull() {
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {

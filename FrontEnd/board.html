@@ -102,6 +102,12 @@
             } else {
                 alert(`Room ID: ${roomId}, and Role: ${role}`);
             }
+            socket.on('sync-board', (boardData) => {
+            board = boardData;
+            updateReloadedUI(board); // ← this should redraw the board
+            });
+
+            socket.emit('request-board', scriptRoomId);
 
             // Now that DOM is ready and role is assigned, initialize board
             initializeBoard();
