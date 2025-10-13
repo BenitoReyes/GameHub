@@ -65,9 +65,9 @@ function renderScores() {
     });
     document.body.appendChild(yellowEl);
   }
-
-  redEl.textContent = `Red: ${redScore}`;
-  yellowEl.textContent = `Yellow: ${yellowScore}`;
+  
+  redEl.textContent = ` ${redScore}`;
+  yellowEl.textContent = ` ${yellowScore}`;
   }
 }
 
