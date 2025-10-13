@@ -1,17 +1,18 @@
-console.log("StreamChat loaded?", typeof StreamChat);
-
+// FRONTEND JAVASCRIPT FOR CONNECT 4 WITH STREAM CHAT INTEGRATION
 const socket = io();
 const ROWS = 6;
 const COLS = 7;
 const EMPTY = 0;
 const PLAYER1 = 'red';
 const PLAYER2 = 'yellow';
+let USERS = {}; // to store userId to username mapping
 let board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
-let currentPlayer = PLAYER1;
+let currentPlayer;
 let assignedPlayer;
 let gameOver = false;
 let userId, chatToken;
-
+let isMyTurn = false;
+let scriptRoomId;
 let gameChannel; // will hold the StreamChat channel instance
 
 let STREAM_API_KEY; // globalization of stream api key
@@ -25,7 +26,10 @@ let yellowScore = 0;
 function renderScores() {
   let redEl = document.getElementById('redScore');
   let yellowEl = document.getElementById('yellowScore');
-
+  if (typeof window.IS_BOARD_PAGE === 'undefined') {
+  window.IS_BOARD_PAGE = window.location.href.includes('board.html');
+  }
+  if(window.IS_BOARD_PAGE){
   if (!redEl) {
     redEl = document.createElement('div');
     redEl.id = 'redScore';
@@ -64,6 +68,7 @@ function renderScores() {
 
   redEl.textContent = `Red: ${redScore}`;
   yellowEl.textContent = `Yellow: ${yellowScore}`;
+  }
 }
 
 // initialize scores UI
@@ -212,14 +217,20 @@ function showRoleModal(message) {
 
 // INITIALIZATION
 
-
- function initializeBoard() {
+function initializeBoard() {
   document.querySelectorAll('.cell').forEach(cell => {
     cell.addEventListener('click', () => {
       if (gameOver) return;
-
+      if(assignedPlayer === 'spectator'){
+        alert("Spectators cannot make moves");
+        return;
+      }
+      if (!isMyTurn) {
+      alert("It's not your turn");
+      return;
+      } 
       const col = parseInt(cell.dataset.col);
-      const success = dropPiece(col, currentPlayer);
+      const success = dropPiece(col, currentPlayer, scriptRoomId);
 
       if (success) {
         if (checkWin(currentPlayer)) {
@@ -236,21 +247,25 @@ function showRoleModal(message) {
             showResultModal('Draw!');
           }, 100);
         } else {
-          currentPlayer = currentPlayer === PLAYER1 ? PLAYER2 : PLAYER1;
+          if (success) {
+            // after move
+            currentPlayer = currentPlayer === PLAYER1 ? PLAYER2 : PLAYER1;
+            isMyTurn = assignedPlayer === currentPlayer;
+          }
         }
       }
     });
   });
 }
 
-
 // BOARD FUNCTIONS
- function dropPiece(col, player) {
+function dropPiece(col, player, scriptRoomId) {
+  console.log("Emitting move:", { col, player, scriptRoomId });
   for (let row = ROWS - 1; row >= 0; row--) {
     if (board[row][col] === EMPTY) {
       board[row][col] = player;
       (updateUI(row, col, player));
-      socket.emit('make-move', { row, col, player });
+      socket.emit('make-move', { data: {row, col, player}, roomId: scriptRoomId});
       return true;
     }
   }
@@ -261,12 +276,36 @@ function updateUI(row, col, player) {
   console.log(`Updating UI for row: ${row}, col: ${col}, player: ${player}`);
   const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
   if (cell) {
-    const imagePath = player === 'red'
-      ? "Assets/RedConnect4.png"
-      : "Assets/YellowConnect4.png";
+    let imagePath;
+    if(player === 'red'){
+      imagePath = "Assets/RedConnect4.png"
+    } else if (player ==='yellow'){
+      imagePath =  "Assets/YellowConnect4.png";
+    }
     cell.style.backgroundImage = `url('${imagePath}')`;
   }
 }
+
+function updateReloadedUI(board) {
+  let redCount = 0;
+  let yellowCount = 0;
+
+  for (let row = 0; row < ROWS; row++) {
+    for (let col = 0; col < COLS; col++) {
+      const player = board[row][col];
+      if (player !== EMPTY) {
+        updateUI(row, col, player);
+        if (player === PLAYER1) redCount++;
+        if (player === PLAYER2) yellowCount++;
+      }
+    }
+  }
+
+  // Determine whose turn it is
+  currentPlayer = redCount <= yellowCount ? PLAYER1 : PLAYER2;
+  isMyTurn = assignedPlayer === currentPlayer;
+}
+
 
 
 function isBoardFull() {
@@ -278,10 +317,10 @@ function isBoardFull() {
   return true;
 }
 
-
 function isDraw() {
   return isBoardFull();
 }
+
 function checkWin(player){
   // Check horizontal wins
   for (let row = 0; row < ROWS; row++) {
@@ -339,23 +378,14 @@ function checkWin(player){
     }
   }
 
-
 return false;
-}
-function resetGame() {
-  board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
-  document.querySelectorAll('.cell').forEach(cell => {
-    cell.style.backgroundImage = '';
-  });
-  gameOver = false;
-  currentPlayer = assignedPlayer || PLAYER1;
 }
 
 
 // SOCKET EVENTS AND STREAM CHAT INTEGRATION
 
-
 socket.on('opponent-move', (data) => {
+  console.log("Opponent move received:", data);
   if (gameOver) return;
   board[data.row][data.col] = data.player;
   updateUI(data.row, data.col, data.player);
@@ -375,86 +405,87 @@ socket.on('opponent-move', (data) => {
     }, 100);
   } else {
     currentPlayer = assignedPlayer;
+    isMyTurn = assignedPlayer === currentPlayer;
   }
 });
 
-socket.on('chat-auth', async ({ userId: id, token }) => {
-  userId = id;
-  chatToken = token;
-  // Fetch the API key from the server and wait for it before initializing chatClient
+
+async function connectToChat({ roomId, userId, token, role, username }) {
   const res = await fetch("/config");
-  const { apiKey } = await res.json();
+  const { apiKey } = await res.json();   // destructure the key
   STREAM_API_KEY = apiKey;
-  chatClient = new StreamChat(STREAM_API_KEY);
+  chatClient = StreamChat.getInstance(STREAM_API_KEY);
 
-});
-
-socket.on('assign-role', async (role) => {
-  assignedPlayer = role;
-  currentPlayer = role;
-  showRoleModal(`You are ${role.toUpperCase()}`);
-   // Wait until chat-auth has arrived
-  const waitForChatClient = () =>
-    new Promise(resolve => {
-      const check = () => {
-        if (chatClient && userId && chatToken) {
-          resolve();
-        } else {
-          setTimeout(check, 50);
-        }
-      };
-      check();
-    });
-  await waitForChatClient();
-  // If there's an existing user connection, disconnect first
-    if (chatClient?.user) {
-  await chatClient.disconnect();
-}
-  // Now connect the user after checks 
-  try {
-    await chatClient.connectUser(
-      {
-        id: userId,
-        name: `Player ${role.toUpperCase()}`
-      },
-      chatToken
-    );
-    console.log('Chat connected');
-    // Create or get the channel for the game and for now have a system bot stand in for second player
-    const channel = chatClient.channel('messaging', {
-      members: [userId, 'system-bot'],
-      name: 'Game Chat'
-    });
-    // Wait for the channel to be created and watched
-    await channel.create();
-    await channel.watch();
-    gameChannel = channel;
-    // Set up UI event listeners for sending messages
-    document.getElementById('sendBtn').addEventListener('click', async () => {
-      const input = document.getElementById('chatInput');
-      const text = input.value.trim();
-      if (!text) return;
-
-      await gameChannel.sendMessage({ text });
-      input.value = '';
-    });
-    // Listen for new messages
-    gameChannel.on('message.new', (event) => {
-      const msg = event.message;
-      const chatBox = document.getElementById('chatMessages');
-      const div = document.createElement('div');
-      div.textContent = `${msg.user.name}: ${msg.text}`;
-      chatBox.appendChild(div);
-      chatBox.scrollTop = chatBox.scrollHeight;
-    });
-
-    console.log('Channel ready');
-  } catch (err) {
-    console.error('Chat connection failed:', err);
+  if (chatClient?.user) {
+    await chatClient.disconnect();
   }
 
+  await chatClient.connectUser(
+    { id: userId, name: `${(username || 'unknown')}` },
+    token
+  );
+
+  const channel = chatClient.channel('messaging', roomId);
+  await channel.watch();
+  gameChannel = channel; // assign globally
+  console.log('Chat connected and channel ready');
+  channel.on('message.new', event => {
+  const { user, text } = event.message;
+  const username = USERS?.[user.id] || user.name || user.id;
+  const chatBox = document.getElementById('chatMessages');
+  if (!chatBox) return;
+  const messageElem = document.createElement('div');
+  messageElem.textContent = `${username}: ${text}`;
+  chatBox.appendChild(messageElem);
+  chatBox.scrollTop = chatBox.scrollHeight;
 });
 
+// Enable send button
+const sendBtn = document.getElementById('sendBtn');
+const input = document.getElementById('chatInput');
+if (sendBtn && input) {
+  sendBtn.disabled = false;
+  sendBtn.addEventListener('click', async () => {
+    const message = input.value.trim();
+    if (message) {
+      await channel.sendMessage({ text: message });
+      input.value = '';
+    }
+  });
+}
+
+  return { chatClient, gameChannel };
+}
+
+socket.on('game-created', async ({ roomId, userId, token, role, username}) => {
+  console.log("game created");
+  try {
+    sessionStorage.setItem('roomId', roomId);
+    sessionStorage.setItem('userId', userId);
+    sessionStorage.setItem('token', token);
+    sessionStorage.setItem('role', role);
+    sessionStorage.setItem('username', username);
+    location.href = `board.html?roomId=${roomId}`;
+} catch (err) {
+  console.error('Error in connectToChat:', err);
+}
+
+});
+
+socket.on('game-joined', async ({ roomId, userId, token, role, username}) => {
+  try {
+  sessionStorage.setItem('roomId', roomId);
+  sessionStorage.setItem('userId', userId);
+  sessionStorage.setItem('token', token);
+  sessionStorage.setItem('role', role);
+  sessionStorage.setItem('username', username);
+  location.href = `board.html?roomId=${roomId}`;
+  console.log('Chat connected');
+} catch (err) {
+  console.error('Error in connectToChat:', err);
+}
+});
+  
 socket.on('room-full', () => {
   alert('Room is full. Try again later.');
 });
@@ -467,5 +498,3 @@ function resetGame() {
   gameOver = false;
   currentPlayer = assignedPlayer || PLAYER1;
 }
-
-initializeBoard();

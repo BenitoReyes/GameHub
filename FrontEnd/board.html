@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Board Visual</title>
+      <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+      <div class="board-container">
+          <div class="board-header">
+              <h1>Game Board</h1>
+          </div>
+          <div id="game-board">
+              <!-- 6 rows × 7 columns = 42 cells -->
+              <div class="cell" data-row="0" data-col="0"></div>
+              <div class="cell" data-row="0" data-col="1"></div>
+              <div class="cell" data-row="0" data-col="2"></div>
+              <div class="cell" data-row="0" data-col="3"></div>
+              <div class="cell" data-row="0" data-col="4"></div>
+              <div class="cell" data-row="0" data-col="5"></div>
+              <div class="cell" data-row="0" data-col="6"></div>
+
+              <div class="cell" data-row="1" data-col="0"></div>
+              <div class="cell" data-row="1" data-col="1"></div>
+              <div class="cell" data-row="1" data-col="2"></div>
+              <div class="cell" data-row="1" data-col="3"></div>
+              <div class="cell" data-row="1" data-col="4"></div>
+              <div class="cell" data-row="1" data-col="5"></div>
+              <div class="cell" data-row="1" data-col="6"></div>
+
+              <div class="cell" data-row="2" data-col="0"></div>
+              <div class="cell" data-row="2" data-col="1"></div>
+              <div class="cell" data-row="2" data-col="2"></div>
+              <div class="cell" data-row="2" data-col="3"></div>
+              <div class="cell" data-row="2" data-col="4"></div>
+              <div class="cell" data-row="2" data-col="5"></div>
+              <div class="cell" data-row="2" data-col="6"></div>
+
+              <div class="cell" data-row="3" data-col="0"></div>
+              <div class="cell" data-row="3" data-col="1"></div>
+              <div class="cell" data-row="3" data-col="2"></div>
+              <div class="cell" data-row="3" data-col="3"></div>
+              <div class="cell" data-row="3" data-col="4"></div>
+              <div class="cell" data-row="3" data-col="5"></div>
+              <div class="cell" data-row="3" data-col="6"></div>
+
+              <div class="cell" data-row="4" data-col="0"></div>
+              <div class="cell" data-row="4" data-col="1"></div>
+              <div class="cell" data-row="4" data-col="2"></div>
+              <div class="cell" data-row="4" data-col="3"></div>
+              <div class="cell" data-row="4" data-col="4"></div>
+              <div class="cell" data-row="4" data-col="5"></div>
+              <div class="cell" data-row="4" data-col="6"></div>
+              
+              <div class="cell" data-row="5" data-col="0"></div>
+              <div class="cell" data-row="5" data-col="1"></div>
+              <div class="cell" data-row="5" data-col="2"></div>
+              <div class="cell" data-row="5" data-col="3"></div>
+              <div class="cell" data-row="5" data-col="4"></div>
+              <div class="cell" data-row="5" data-col="5"></div>
+              <div class="cell" data-row="5" data-col="6"></div>
+          </div>
+
+          
+      </div>
+      <div class="chat-container">
+          <h2>Game Chat</h2>
+          <div id="chatMessages" class="chat-box"></div>
+          <input id="chatInput" type="text" placeholder="Type a message..." />
+          <button id="sendBtn">Send</button>
+      </div>
+      <script src="stream-chat.bundle.js"></script>
+      <script src="/socket.io/socket.io.js"></script>
+      <script src="script.js"></script>
+      <script>
+        window.addEventListener('DOMContentLoaded', async () => {
+            window.IS_BOARD_PAGE = true;
+            renderScores();
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomId = urlParams.get('roomId') || sessionStorage.getItem('roomId');
+            const userId = sessionStorage.getItem('userId');
+            const token = sessionStorage.getItem('token');
+            const role = sessionStorage.getItem('role');
+            const username = sessionStorage.getItem('username');
+            if (!roomId || !userId || !token || !role) {
+            alert("Missing session data. Please rejoin the room.");
+            return;
+            }
+            try {
+            await connectToChat({ roomId, userId, token, role, username });
+            } catch (err) {
+            console.error("Error connecting to chat:", err);
+            }
+            assignedPlayer = role;
+            currentPlayer = 'red'; // red always starts
+            isMyTurn = role === currentPlayer;
+            scriptRoomId = roomId;
+            socket.emit('join-room', scriptRoomId);
+
+            // Optional role alert
+            showRoleModal(role);
+            socket.on('sync-board', (boardData) => {
+            board = boardData;
+            updateReloadedUI(board); // ← this should redraw the board
+            });
+
+            socket.emit('request-board', scriptRoomId);
+
+            // Now that DOM is ready and role is assigned, initialize board
+            initializeBoard();
+
+        });
+      </script>
+      
+  </body>
+</html>
