@@ -56,7 +56,7 @@ app.get('/config', (req, res) => {
         })
       ]);
 
-      res.redirect('index.html');
+      res.redirect('gameCreate.html');
     } catch (error) {
       console.error('Error during signup:', error);
       res.json(error);
