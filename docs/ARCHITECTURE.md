@@ -32,9 +32,10 @@
 - 'Node' — another server for browser testing
 - 'bcrypt' — used to encrypt password 
 - 'cookie' — used to set userId and token cookies
-- 'neon' — the progres database being used
+- 'neon' — the postgresql database being used
 - 'uuid' used to generate random userId's and roomId's
 - 'vite' — used to package streamchat bundle for browser/html usage
+- 'prisma' — used to query the database more easily
 
 ##  Testing & CI
 
