@@ -64,6 +64,8 @@
 
           
       </div>
+      <div id="turnIndicator">Turn: RED
+     </div>
       <div class="chat-container">
           <h2>Game Chat</h2>
           <div id="chatMessages" class="chat-box"></div>
@@ -100,14 +102,15 @@
 
             // Optional role alert
             if(role==='spectator'){
-                showRoleModal("You are a " + role);
+                showRoleModal("You are a " + role + ", RoomID: " + roomId);
             } else {
-                showRoleModal("You are " + role);
+                showRoleModal("You are " + role + ", RoomID: " + roomId);
             }
             
             socket.on('sync-board', (boardData) => {
-            board = boardData;
-            updateReloadedUI(board); // ← this should redraw the board
+                board = boardData;
+                updateReloadedUI(board); // ← this should redraw the board
+                updateTurnIndicator();
             });
 
             socket.emit('request-board', scriptRoomId);

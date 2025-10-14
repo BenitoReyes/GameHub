@@ -4,7 +4,7 @@ const ROWS = 6;
 const COLS = 7;
 const EMPTY = 0;
 const PLAYER1 = 'red';
-const PLAYER2 = 'yellow';
+const PLAYER2 = 'blue';
 let USERS = {}; // to store userId to username mapping
 let board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
 let currentPlayer;
@@ -21,11 +21,11 @@ let chatClient; // will hold the StreamChat client instance
 
 // Scores (kept in-memory while the page is open)
 let redScore = 0;
-let yellowScore = 0;
+let blueScore = 0;
 
 function renderScores() {
   let redEl = document.getElementById('redScore');
-  let yellowEl = document.getElementById('yellowScore');
+  let blueEl = document.getElementById('blueScore');
   if (typeof window.IS_BOARD_PAGE === 'undefined') {
   window.IS_BOARD_PAGE = window.location.href.includes('board.html');
   }
@@ -39,8 +39,7 @@ function renderScores() {
       left: '12px',
       fontSize: '48px',
       fontWeight: '600',
-      color: 'red',
-      background: 'rgba(255,255,255,0.8)',
+      color: 'coral',
       padding: '6px 10px',
       borderRadius: '6px',
       zIndex: '1000'
@@ -48,26 +47,25 @@ function renderScores() {
     document.body.appendChild(redEl);
   }
 
-  if (!yellowEl) {
-    yellowEl = document.createElement('div');
-    yellowEl.id = 'yellowScore';
-    Object.assign(yellowEl.style, {
+  if (!blueEl) {
+    blueEl = document.createElement('div');
+    blueEl.id = 'blueScore';
+    Object.assign(blueEl.style, {
       position: 'fixed',
       top: '8px',
       right: '12px',
       fontSize: '48px',
       fontWeight: '600',
-      color: 'goldenrod',
-      background: 'rgba(255,255,255,0.8)',
+      color: 'royalblue',
       padding: '6px 10px',
       borderRadius: '6px',
       zIndex: '1000'
     });
-    document.body.appendChild(yellowEl);
+    document.body.appendChild(blueEl);
   }
   
   redEl.textContent = ` ${redScore}`;
-  yellowEl.textContent = ` ${yellowScore}`;
+  blueEl.textContent = ` ${blueScore}`;
   }
 }
 
@@ -124,8 +122,8 @@ function showResultModal(message) {
     const lower = (message || '').toLowerCase();
     if (lower.includes('red')) {
       msgEl.style.color = 'red';
-    } else if (lower.includes('yellow')) {
-      msgEl.style.color = 'goldenrod';
+    } else if (lower.includes('blue')) {
+      msgEl.style.color = 'royalblue';
     } else {
       msgEl.style.color = '#666';
     }
@@ -171,7 +169,7 @@ function showRoleModal(message) {
 
     const content = document.createElement('div');
     Object.assign(content.style, {
-      background: '#fff',
+      background: '#000',
       padding: '20px',
       borderRadius: '8px',
       textAlign: 'center',
@@ -232,30 +230,53 @@ function initializeBoard() {
       const col = parseInt(cell.dataset.col);
       const success = dropPiece(col, currentPlayer, scriptRoomId);
 
-      if (success) {
-        if (checkWin(currentPlayer)) {
-          gameOver = true;
-          // increment score for current player
-          if (currentPlayer === PLAYER1) redScore++; else yellowScore++;
-          renderScores();
-          setTimeout(() => {
-            showResultModal(`${currentPlayer.toUpperCase()} wins!`);
-          }, 100);
-        } else if (isDraw()) {
-          gameOver = true;
-          setTimeout(() => {
-            showResultModal('Draw!');
-          }, 100);
-        } else {
-          if (success) {
-            // after move
-            currentPlayer = currentPlayer === PLAYER1 ? PLAYER2 : PLAYER1;
-            isMyTurn = assignedPlayer === currentPlayer;
-          }
+      if (!success) {
+        return
+      }
+
+      // find placed row
+      let placedRow = -1;
+      for (let r = 0; r < ROWS; r++) {
+        if (board[r][col] !== EMPTY) { placedRow = r; break; }
+      }
+      if (placedRow === -1) return;
+      updateUI(placedRow, col, currentPlayer);
+
+      if (checkWin(currentPlayer)) {
+        gameOver = true;
+        // increment score for current player
+        if (currentPlayer === PLAYER1) redScore++; else blueScore++;
+        renderScores();
+        updateTurnIndicator();
+        setTimeout(() => {
+          showResultModal(`${currentPlayer.toUpperCase()} wins!`);
+        }, 100);
+      } else if (isDraw()) {
+        gameOver = true;
+        updateTurnIndicator();
+        setTimeout(() => {
+          showResultModal('Draw!');
+        }, 100);
+      } else {
+        if (success) {
+          // after move
+          currentPlayer = currentPlayer === PLAYER1 ? PLAYER2 : PLAYER1;
+          isMyTurn = assignedPlayer === currentPlayer;
+          updateTurnIndicator();
         }
       }
     });
+    // COLUMN HOVER: highlight the entire column on mouse enter/leave
+    cell.addEventListener('mouseenter', () => {
+      const col = parseInt(cell.dataset.col, 10);
+      highlightColumn(col);
+    });
+    cell.addEventListener('mouseleave', () => {
+      const col = parseInt(cell.dataset.col, 10);
+      clearColumnHighlight(col);
+    });
   });
+  updateTurnIndicator();
 }
 
 // BOARD FUNCTIONS
@@ -273,22 +294,33 @@ function dropPiece(col, player, scriptRoomId) {
 }
 
 function updateUI(row, col, player) {
-  console.log(`Updating UI for row: ${row}, col: ${col}, player: ${player}`);
   const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
-  if (cell) {
-    let imagePath;
-    if(player === 'red'){
-      imagePath = "Assets/RedConnect4.png"
-    } else if (player ==='yellow'){
-      imagePath =  "Assets/YellowConnect4.png";
-    }
-    cell.style.backgroundImage = `url('${imagePath}')`;
-  }
+  if (!cell) return;
+  const existing = cell.querySelector('.piece');
+  if (existing) existing.remove();
+
+
+  const img = document.createElement('img');
+  img.src = player === PLAYER1 ? "Assets/GHCCoin.png" : "Assets/GHRBCoin.png";
+  img.className = `piece ${player}`;
+  img.style.transform = 'translateY(-200px) scale(0.95)';
+  img.style.opacity = '0';
+  cell.appendChild(img);
+
+
+  requestAnimationFrame(() => {
+    img.style.transform = 'translateY(0) scale(1)';
+    img.style.opacity = '1';
+  });
+
+
+  updateTurnIndicator();
 }
+
 
 function updateReloadedUI(board) {
   let redCount = 0;
-  let yellowCount = 0;
+  let blueCount = 0;
 
   for (let row = 0; row < ROWS; row++) {
     for (let col = 0; col < COLS; col++) {
@@ -296,17 +328,15 @@ function updateReloadedUI(board) {
       if (player !== EMPTY) {
         updateUI(row, col, player);
         if (player === PLAYER1) redCount++;
-        if (player === PLAYER2) yellowCount++;
+        if (player === PLAYER2) blueCount++;
       }
     }
   }
 
   // Determine whose turn it is
-  currentPlayer = redCount <= yellowCount ? PLAYER1 : PLAYER2;
+  currentPlayer = redCount <= blueCount ? PLAYER1 : PLAYER2;
   isMyTurn = assignedPlayer === currentPlayer;
 }
-
-
 
 function isBoardFull() {
   for (let r = 0; r < ROWS; r++) {
@@ -381,6 +411,49 @@ function checkWin(player){
 return false;
 }
 
+function highlightColumn(col) {
+  document.querySelectorAll(`.cell[data-col="${col}"]`).forEach(c => c.classList.add('highlight'));
+}
+function clearColumnHighlight(col) {
+  document.querySelectorAll(`.cell[data-col="${col}"]`).forEach(c => c.classList.remove('highlight'));
+}
+
+function updateTurnIndicator() {
+  const el = document.getElementById('turnIndicator');
+  if (!el) return;
+
+  // clear previous state classes
+  el.classList.remove('red', 'blue');
+
+  if (gameOver) {
+    el.textContent = 'Game Over';
+    // keep neutral appearance
+    return;
+  }
+
+
+  // assume currentPlayer is 'red' or 'blue'
+  if (currentPlayer === PLAYER1 || currentPlayer === 'red') {
+    el.textContent = 'Turn: RED';
+    el.classList.add('red');
+  } else {
+    el.textContent = 'Turn: BLUE';
+    el.classList.add('blue');
+  }
+}
+
+function resetGame() {
+  board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
+  document.querySelectorAll('.cell').forEach(cell => {
+    const existing = cell.querySelector('.piece');
+    if (existing) existing.remove();
+    cell.style.backgroundImage = '';
+    cell.classList.remove('highlight');
+  });
+  gameOver = false;
+  currentPlayer = assignedPlayer || PLAYER1;
+  updateTurnIndicator();
+}
 
 // SOCKET EVENTS AND STREAM CHAT INTEGRATION
 
@@ -393,7 +466,7 @@ socket.on('opponent-move', (data) => {
   if (checkWin(data.player)) {
     gameOver = true;
     // increment score for winning player
-    if (data.player === PLAYER1) redScore++; else yellowScore++;
+    if (data.player === PLAYER1) redScore++; else blueScore++;
     renderScores();
     setTimeout(() => {
       showResultModal(`${data.player.toUpperCase()} wins!`);
@@ -406,6 +479,7 @@ socket.on('opponent-move', (data) => {
   } else {
     currentPlayer = assignedPlayer;
     isMyTurn = assignedPlayer === currentPlayer;
+    updateTurnIndicator();
   }
 });
 
@@ -489,12 +563,3 @@ socket.on('game-joined', async ({ roomId, userId, token, role, username}) => {
 socket.on('room-full', () => {
   alert('Room is full. Try again later.');
 });
-
-function resetGame() {
-  board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
-  document.querySelectorAll('.cell').forEach(cell => {
-    cell.style.backgroundImage = '';
-  });
-  gameOver = false;
-  currentPlayer = assignedPlayer || PLAYER1;
-}

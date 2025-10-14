@@ -187,12 +187,12 @@ io.on('connection', async (socket) => {
         role = 'spectator';
         permission = 'SPECTATOR';
       } else {
-        role = 'yellow';
+        role = 'blue';
         permission = 'PLAYER';
       }
     } else {
       if(participant.permission === 'PLAYER'){
-        role = 'yellow';
+        role = 'blue';
         permission = 'PLAYER';
       } else if(participant.permission === 'HOST'){
         role = 'red';
