@@ -22,14 +22,20 @@
 - `.env` file stores API secrets (never committed)
 - StreamChat token is generated server-side only
 - Frontend receives only the token and userId through requesting get from backend
-
+- passwords are encrypted
 ##  Dependencies
 
 - `express` — initial HTTP server
 - `socket.io` — real-time game communication
 - `stream-chat` — chat SDK (client + server)
 - `dotenv` — environment variable management
-- 'Node' - another server for browser testing
+- 'Node' — another server for browser testing
+- 'bcrypt' — used to encrypt password 
+- 'cookie' — used to set userId and token cookies
+- 'neon' — the postgresql database being used
+- 'uuid' used to generate random userId's and roomId's
+- 'vite' — used to package streamchat bundle for browser/html usage
+- 'prisma' — used to query the database more easily
 
 ##  Testing & CI
 

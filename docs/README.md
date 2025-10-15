@@ -13,7 +13,7 @@ A real-time, two-player Connect Four game built with Node.js, Express, Socket.IO
 ##  Tech Stack
 
 - **Frontend**: HTML, CSS, Vanilla JS
-- **Backend**: Node.js, Express, Socket.IO
+- **Backend**: Node.js, Express, Socket.IO, Neon, Prisma
 - **Chat**: StreamChat SDK (client + server)
 - **Deployment**: Localhost or cloud platform Render
 
@@ -28,8 +28,11 @@ A real-time, two-player Connect Four game built with Node.js, Express, Socket.IO
   npm install
 
 3. Create a .env file in /BackEnd
+
   STREAM_API_KEY= streamChat_api_key
   STREAM_API_SECRET= streamChat_api_secret
+  DATABASE_URL = neon secrets
+  PRISMA_KEY= prisma api key
 
 4.  Run the server:
    node BackEnd/server.js
@@ -43,11 +46,21 @@ Connect-Four-Online/
 
 ├── BackEnd/             # Express + Socket.IO + StreamChat server
 
-│   └── server.js
+│  └── server.js
 
 ├── FrontEnd/            # Game board UI and chat logic 
 
 │   └── index.html
+
+│   └── board.html
+
+│   └── gameCreate.html
+
+│   └── joinGame.html
+
+│   └── login.html
+
+│   └── signUp.html
 
 │   └──  script.js       
 
@@ -55,9 +68,13 @@ Connect-Four-Online/
 
 │   └── streamchat-bundle.js #initializes the browser version of streamchat to the browser 
 
+│   └── chat-entry.js #used by vite to bundle streamchat in a browser friendly version 
+
 ├── docs/
 
 │   └── README.md
 
 │   └── ARCHITECTURE.md
+
+|   └── Database ERD.pdf
 

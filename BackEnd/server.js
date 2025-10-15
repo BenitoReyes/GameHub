@@ -56,7 +56,7 @@ app.get('/config', (req, res) => {
         })
       ]);
 
-      res.redirect('index.html');
+      res.redirect('gameCreate.html');
     } catch (error) {
       console.error('Error during signup:', error);
       res.json(error);
@@ -187,12 +187,12 @@ io.on('connection', async (socket) => {
         role = 'spectator';
         permission = 'SPECTATOR';
       } else {
-        role = 'yellow';
+        role = 'blue';
         permission = 'PLAYER';
       }
     } else {
       if(participant.permission === 'PLAYER'){
-        role = 'yellow';
+        role = 'blue';
         permission = 'PLAYER';
       } else if(participant.permission === 'HOST'){
         role = 'red';
