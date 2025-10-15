@@ -48,7 +48,6 @@ body {
   width: 60px;
   height: 60px;
   background: radial-gradient(circle at 50% 40%, rgba(255,255,255,0.02), rgba(0,0,0,0.18));
-  border-radius: 8px;
   margin: 0;
   display: inline-flex;
   align-items: center;
@@ -57,14 +56,16 @@ body {
   position: relative;
   overflow: hidden;
   transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease, border-color 120ms ease;
-  background-size: 90%;
+  background-size: 100%;
   background-repeat: no-repeat;
   background-position: center;
 
-
   /* Brighter visible border to distinguish cells */
-  border: 2px solid rgba(255,255,255,0.08);
+  border: 2px solid rgba(255, 255, 255, 0.459);
   box-shadow: inset 0 -6px 18px rgba(0,0,0,0.25);
+  /* Add this line to curve the edges */
+  border-radius: 12px; /* or 50% for a perfect circle */
+
 }
 
 .cell.highlight {
@@ -73,7 +74,7 @@ body {
   border-color: rgba(255,255,255,0.18); /* brighter border on hover/column highlight */
 }
 .piece {
-  width: 80%;
+  width: 100%;
   height: auto;
   display: block;
   transition: transform 360ms cubic-bezier(.22,.9,.11,1), opacity 180ms ease;
