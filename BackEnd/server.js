@@ -115,7 +115,7 @@ io.on('connection', async (socket) => {
       const token = serverClient.createToken(userId)
       const emptyBoard = Array.from({ length: 6 }, () => Array(7).fill(0));
       await prisma.room.create({
-        data: { id: roomId, host: {connect: {id:userId}}, isPublic: false, board: emptyBoard }
+        data: { id: roomId, host: {connect: {id:userId}}, isPublic: true, board: emptyBoard }
       });
       await prisma.user.update({
         where: { id: userId },
@@ -241,7 +241,13 @@ io.on('connection', async (socket) => {
         socket.emit('sync-board', room.board);
       }
     });
-
+    socket.on('get-rooms', async () => {
+      const rooms = await prisma.room.findMany({
+        where: { isPublic: true },
+        select: { id: true, participants: true }
+      });
+      socket.emit('room-list', rooms);
+    });
     socket.on('make-move', async ({data, roomId}) => {
       console.log(`Move received in room ${roomId}:`, data);
       console.log(`Socket rooms:`, Array.from(socket.rooms));
@@ -270,10 +276,22 @@ io.on('connection', async (socket) => {
     });
 
 
-    socket.on('disconnect', () => {
-        console.log('Player disconnected:', socket.id);
-        players = players.filter(id => id !== socket.id);
+    socket.on('disconnect', async () => {
+      for (const roomId of socket.rooms) {
+        if (roomId === socket.id) continue;
+
+        const room = io.sockets.adapter.rooms.get(roomId);
+        const numUsers = room ? room.size : 0;
+
+        if (numUsers === 0) {
+          await prisma.room.delete({ where: { id: roomId } });
+          console.log(`Deleted room ${roomId} from DB`);
+          io.emit('room-list-update'); // optional
+        }
+      }
     });
+
+
 });
 
 server.listen(PORT, () => {
