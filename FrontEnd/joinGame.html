@@ -1,24 +1,291 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Join Game</title>
-        <link rel="stylesheet" href="styles.css" />
-    </head>
-    <body>
-        <div class="join-container">
-            <h1>Join a Game Room</h1>
-            <input type="text" id="roomIdInput" placeholder="Enter Room ID" />
-            <button id="joinRoom">Join Room</button>
-        </div>
-        <script src="/socket.io/socket.io.js"></script>
-        <script src="script.js"></script>
-        <script>
-            document.getElementById('joinRoom').addEventListener('click', async () => {
-                const roomId = document.getElementById('roomIdInput').value;
-                socket.emit('join-game', roomId);
-            });
-        </script>
-    </body>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Connect 4 - Join Game</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background: linear-gradient(180deg, #1a1a2e 0%, #0f3460 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            position: relative;
+            overflow: hidden;
+            padding: 20px;
+        }
+
+        /* Animated stars background */
+        body::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background-image: 
+                radial-gradient(2px 2px at 20% 30%, white, transparent),
+                radial-gradient(2px 2px at 60% 70%, white, transparent),
+                radial-gradient(1px 1px at 50% 50%, white, transparent),
+                radial-gradient(1px 1px at 80% 10%, white, transparent),
+                radial-gradient(2px 2px at 90% 60%, white, transparent),
+                radial-gradient(1px 1px at 33% 80%, white, transparent);
+            background-size: 200px 200px;
+            animation: stars 20s linear infinite;
+            opacity: 0.5;
+        }
+
+        @keyframes stars {
+            from { transform: translateY(0); }
+            to { transform: translateY(-200px); }
+        }
+
+        .join-container {
+            background: linear-gradient(135deg, #2d3561 0%, #1f2544 100%);
+            border: 6px solid #fff;
+            box-shadow: 
+                0 0 0 6px #000,
+                0 15px 40px rgba(0, 0, 0, 0.6),
+                inset 0 0 30px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+            position: relative;
+            z-index: 1;
+            animation: slideDown 0.8s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Pixel corners */
+        .join-container::before,
+        .join-container::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #4ecdc4;
+        }
+
+        .join-container::before {
+            top: -6px;
+            left: -6px;
+            box-shadow: 0 0 0 6px #000;
+        }
+
+        .join-container::after {
+            bottom: -6px;
+            right: -6px;
+            box-shadow: 0 0 0 6px #000;
+        }
+
+        h1 {
+            color: #4ecdc4;
+            font-size: 20px;
+            text-align: center;
+            margin-bottom: 40px;
+            text-shadow: 
+                3px 3px 0 #000,
+                5px 5px 0 rgba(0, 0, 0, 0.3);
+            line-height: 1.6;
+            letter-spacing: 1px;
+        }
+
+        .icon-container {
+            text-align: center;
+            font-size: 48px;
+            margin-bottom: 30px;
+        }
+
+        label {
+            color: #fbbf24;
+            font-size: 12px;
+            margin-bottom: 12px;
+            text-shadow: 2px 2px 0 #000;
+            letter-spacing: 1px;
+            display: block;
+        }
+
+        input[type="text"] {
+            background: #0f1419;
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000, inset 0 4px 8px rgba(0, 0, 0, 0.5);
+            color: #4ecdc4;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 14px;
+            padding: 18px;
+            margin-bottom: 30px;
+            outline: none;
+            transition: all 0.2s;
+            width: 100%;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+
+        input[type="text"]:focus {
+            border-color: #fbbf24;
+            box-shadow: 0 0 0 4px #000, 
+                        inset 0 4px 8px rgba(0, 0, 0, 0.5),
+                        0 0 20px rgba(251, 191, 36, 0.5);
+        }
+
+        input[type="text"]::placeholder {
+            color: #4a5568;
+            font-size: 11px;
+        }
+
+        button {
+            background: linear-gradient(180deg, #4ecdc4 0%, #44a08d 100%);
+            color: white;
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000, 0 6px 0 #000;
+            padding: 20px;
+            font-size: 16px;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-weight: bold;
+            font-family: 'Press Start 2P', cursive;
+            width: 100%;
+            position: relative;
+            transition: all 0.1s;
+            letter-spacing: 2px;
+        }
+
+        button:hover {
+            background: linear-gradient(180deg, #5eddd4 0%, #54b09d 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 0 0 4px #000, 0 8px 0 #000;
+        }
+
+        button:active {
+            transform: translateY(2px);
+            box-shadow: 0 0 0 4px #000, 0 2px 0 #000;
+        }
+
+        /* Back button */
+        .back-btn {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000, 0 4px 0 #000;
+            padding: 12px 20px;
+            font-size: 12px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.1s;
+            z-index: 10;
+        }
+
+        .back-btn:hover {
+            background: linear-gradient(180deg, #f87171 0%, #ef4444 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 0 0 4px #000, 0 6px 0 #000;
+        }
+
+        .back-btn:active {
+            transform: translateY(1px);
+            box-shadow: 0 0 0 4px #000, 0 2px 0 #000;
+        }
+
+        /* Floating chips */
+        .floating-chip {
+            position: absolute;
+            font-size: 30px;
+            animation: float 3s ease-in-out infinite;
+            z-index: 0;
+        }
+
+        .chip-1 { top: 12%; left: 8%; animation-delay: 0s; }
+        .chip-2 { top: 18%; right: 10%; animation-delay: 1s; }
+        .chip-3 { bottom: 15%; left: 12%; animation-delay: 2s; }
+        .chip-4 { bottom: 20%; right: 8%; animation-delay: 1.5s; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+        }
+
+        @media (max-width: 480px) {
+            .join-container {
+                padding: 30px 25px;
+            }
+            
+            h1 {
+                font-size: 16px;
+            }
+            
+            label {
+                font-size: 10px;
+            }
+            
+            input[type="text"] {
+                font-size: 12px;
+                padding: 15px;
+            }
+            
+            button {
+                font-size: 14px;
+                padding: 18px;
+            }
+
+            .back-btn {
+                top: 15px;
+                left: 15px;
+                padding: 10px 15px;
+                font-size: 10px;
+            }
+
+            .icon-container {
+                font-size: 36px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="connect4Menu.html" class="back-btn">◄ BACK</a>
+
+    <div class="floating-chip chip-1">🔴</div>
+    <div class="floating-chip chip-2">🟡</div>
+    <div class="floating-chip chip-3">🔴</div>
+    <div class="floating-chip chip-4">🟡</div>
+
+    <div class="join-container">
+        <div class="icon-container">🎯</div>
+        <h1>JOIN A GAME ROOM</h1>
+        <label for="roomIdInput">► ENTER ROOM CODE:</label>
+        <input type="text" id="roomIdInput" placeholder="XXXX-XXXX" />
+        <button id="joinRoom">► JOIN ROOM</button>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+    <script>
+        document.getElementById('joinRoom').addEventListener('click', async () => {
+            const roomId = document.getElementById('roomIdInput').value;
+            socket.emit('join-game', roomId);
+        });
+    </script>
+</body>
 </html>
