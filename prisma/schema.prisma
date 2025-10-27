@@ -27,15 +27,6 @@ model Room {
   participants RoomParticipant[]
 }
 
-model Message {
-  id          Int             @id @default(autoincrement())
-  roomId      String
-  senderId    String
-  text        String
-  timestamp   DateTime        @default(now())
-  participant RoomParticipant @relation(fields: [senderId, roomId], references: [userId, roomId])
-}
-
 model RoomParticipant {
   id       Int       @id @default(autoincrement())
   userId   String
@@ -53,4 +44,13 @@ enum Permission {
   HOST
   PLAYER
   SPECTATOR
+}
+
+model Message {
+  id          Int             @id @default(autoincrement())
+  roomId      String
+  senderId    String
+  text        String
+  timestamp   DateTime        @default(now())
+  participant RoomParticipant @relation(fields: [senderId, roomId], references: [userId, roomId])
 }
