@@ -18,19 +18,9 @@ CREATE TABLE "public"."Room" (
     "isPublic" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "board" JSONB NOT NULL,
+    "inRoom" INTEGER NOT NULL,
 
     CONSTRAINT "Room_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "public"."Message" (
-    "id" SERIAL NOT NULL,
-    "roomId" TEXT NOT NULL,
-    "senderId" TEXT NOT NULL,
-    "text" TEXT NOT NULL,
-    "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "Message_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -44,6 +34,17 @@ CREATE TABLE "public"."RoomParticipant" (
     CONSTRAINT "RoomParticipant_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "public"."Message" (
+    "id" SERIAL NOT NULL,
+    "roomId" TEXT NOT NULL,
+    "senderId" TEXT NOT NULL,
+    "text" TEXT NOT NULL,
+    "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Message_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_username_key" ON "public"."User"("username");
 
@@ -54,10 +55,10 @@ CREATE UNIQUE INDEX "RoomParticipant_userId_roomId_key" ON "public"."RoomPartici
 ALTER TABLE "public"."Room" ADD CONSTRAINT "Room_hostId_fkey" FOREIGN KEY ("hostId") REFERENCES "public"."User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."Message" ADD CONSTRAINT "Message_senderId_roomId_fkey" FOREIGN KEY ("senderId", "roomId") REFERENCES "public"."RoomParticipant"("userId", "roomId") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."RoomParticipant" ADD CONSTRAINT "RoomParticipant_roomId_fkey" FOREIGN KEY ("roomId") REFERENCES "public"."Room"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."RoomParticipant" ADD CONSTRAINT "RoomParticipant_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."RoomParticipant" ADD CONSTRAINT "RoomParticipant_roomId_fkey" FOREIGN KEY ("roomId") REFERENCES "public"."Room"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."Message" ADD CONSTRAINT "Message_senderId_roomId_fkey" FOREIGN KEY ("senderId", "roomId") REFERENCES "public"."RoomParticipant"("userId", "roomId") ON DELETE RESTRICT ON UPDATE CASCADE;

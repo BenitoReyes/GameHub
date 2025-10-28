@@ -31,13 +31,13 @@
                         <span>Username: ${room.host.username}</span>
                         <span>, Participants: ${room.participants.length}</span>
                         <span>, Spectators: ${room.participants.length <= 2 ? 0 : room.participants.length - 2}</span>
-                        <button class="joinBtn" data-room-hostId="${room.host.username}">Join</button> 
+                        <button class="joinBtn" data-room-hostUsername="${room.host.username}">Join</button> 
                     </div>
                 `).join('');
                 document.querySelectorAll('.joinBtn').forEach(button => {
                     button.addEventListener('click', () => {
-                        const roomHostId = button.getAttribute('data-room-hostId');
-                        socket.emit('join-game', roomHostId);
+                        const roomHostUsername = button.getAttribute('data-room-hostUsername');
+                        socket.emit('join-game', roomHostUsername);
                     });
                 });
             });
@@ -48,13 +48,13 @@
                         <span>Username: ${room.host.username}</span>
                         <span>, Participants: ${room.participants.length}</span>
                         <span>, Spectators: ${room.participants.length <= 2 ? 0 : room.participants.length - 2}</span>
-                        <button class="joinBtn" data-room-id="${room.id}">Join</button> 
+                        <button class="joinBtn" data-room-hostUsername="${room.host.username}">Join</button> 
                     </div>
                 `).join('');
                 document.querySelectorAll('.joinBtn').forEach(button => {
                     button.addEventListener('click', () => {
-                        const roomId = button.getAttribute('data-room-id');
-                        socket.emit('join-game', roomId);
+                        const roomHostUsername = button.getAttribute('data-room-hostUsername');
+                        socket.emit('join-game', roomHostUsername);
                     });
                 });
             });

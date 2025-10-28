@@ -18,7 +18,8 @@ const STREAM_API_KEY = process.env.STREAM_API_KEY;
 const STREAM_SECRET = process.env.STREAM_SECRET;
 const serverClient = StreamChat.getInstance(STREAM_API_KEY, STREAM_SECRET);
 const PORT = process.env.PORT || 3000;
-
+let gameJoined = false;
+let transitioning = true;
 app.use(express.static('FrontEnd')); // Serve frontend files
 app.use(express.json()); // Middleware to parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // parse form bodies if needed
@@ -114,7 +115,7 @@ io.on('connection', async (socket) => {
       const token = serverClient.createToken(userId)
       const emptyBoard = Array.from({ length: 6 }, () => Array(7).fill(0));
       await prisma.room.create({
-        data: { id: roomId, host: {connect: {id:userId}}, isPublic: true, board: emptyBoard }
+        data: { id: roomId, host: {connect: {id:userId}}, isPublic: true, board: emptyBoard, inRoom: 1 }
       });
       await prisma.user.update({
         where: { id: userId },
@@ -132,21 +133,28 @@ io.on('connection', async (socket) => {
         data: {participants: {connect: { id: participant.id }}}
       });
       const channel = serverClient.channel('messaging', roomId, {
-          members: [userId, 'system-bot'],
-          name: 'Game Chat',
-          created_by_id: userId
-        });
-        // Wait for the channel to be created and watched
-        let user = await prisma.user.findUnique({
-          where: {id: userId}
-        });
-        let username = user.username;
+        members: [userId, 'system-bot'],
+        name: 'Game Chat',
+        created_by_id: userId
+      });
+      // Wait for the channel to be created and watched
+      let user = await prisma.user.findUnique({
+        where: {id: userId}
+      });
+      let username = user.username;
       await channel.create();
       await channel.watch();
       socket.join(roomId);
+      gameJoined = true;
+      transitioning = false;
       socket.emit('assign-role', 'red');
       socket.emit('game-created', {roomId, userId, token, role:'red', username});
       //players.push(socket.id);
+    });
+
+    socket.on('join-room', (roomId) => {
+      socket.join(roomId);
+      console.log(`Socket ${socket.id} rejoined room ${roomId}`);
     });
 
     socket.on('join-game', async (hostUsername) => {
@@ -196,23 +204,18 @@ io.on('connection', async (socket) => {
         }
       }
       await prisma.roomParticipant.upsert({
-        where: {
-          userId_roomId: {
-            userId,
-            roomId
-          }
-        },
-        create: {
-          roomId,
-          userId,
-          permission
-        },
-        update: {
-          permission // optional: update role if needed
-        }
+        where: { userId_roomId: { userId, roomId}},
+        create: { roomId, userId, permission},
+        update: { permission } // optional: update role if needed 
+      });
+      await prisma.room.update({
+        where: { id: roomId },
+        data: { inRoom: { increment: 1 } }
       });
       socket.emit('assign-role', role);
       socket.join(roomId);
+      gameJoined = true;
+      transitioning = false;
       socket.emit('game-joined', { roomId, userId, token, role, username });
       const channel = serverClient.channel('messaging', roomId);
       await channel.addMembers([userId]);
@@ -266,21 +269,52 @@ io.on('connection', async (socket) => {
     });
 
     socket.on('disconnect', async () => {
-      for (const roomId of socket.rooms) {
-        if (roomId === socket.id) continue;
-        const room = io.sockets.adapter.rooms.get(roomId);
-        const numUsers = room ? room.size : 0;
-        if (numUsers === 0) {
-          await prisma.room.delete({ where: { id: roomId } });
-          console.log(`Deleted room ${roomId} from DB`);
-          io.emit('room-list-update'); // optional
+        if(transitioning){
+          return;
         }
-      }
+        if(gameJoined){
+          gameJoined = false;
+          return;
+        }
+        const room = await prisma.room.findFirst({
+          where: { hostId: userId },
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, inRoom: true }
+        });
+        if (!room) {
+          console.log(`No room found for host ${userId}`);
+          return;
+        }
+        const roomId = room.id;
+        await prisma.room.update({
+          where: { id: roomId },
+          data: { inRoom: { decrement: 1 } }  
+        });
+        const participant = await prisma.roomParticipant.findUnique({
+          where: { userId_roomId : { userId,roomId } },
+          select: { roomId: true }
+        });
+        if (!participant) {
+          console.log(`No participant record found for user ${userId}`);
+          return;
+        }
+        const updatedRoom = await prisma.room.findUnique({
+          where: { id: roomId },
+          select: { inRoom: true }
+        });
+        console.log(updatedRoom.inRoom);
+        if(updatedRoom.inRoom <= 0){
+          await prisma.roomParticipant.deleteMany({
+            where: { roomId: roomId }
+          });
+          await prisma.room.delete({
+            where: { id: roomId}
+          });
+          console.log(`Room ${roomId} deleted as it became empty`);
+        }
+        transitioning = true;
+      });
     });
-
-
-});
-
 server.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
 });
