@@ -40,7 +40,7 @@ A real-time, two-player Connect Four game built with Node.js, Express, Socket.IO
 5. Open your browser at:
    http://localhost:3000
 
-Connect-Four-Online/
+GameHub/
 
 ├── Assets/              # Game piece images
 
