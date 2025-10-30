@@ -18,6 +18,7 @@
         <script>
             document.getElementById('createRoom').addEventListener('click', async () => {
                 socket.emit('create-game');
+
             });
             document.getElementById('joinRoom').addEventListener('click', async () => {
                 location.href = 'joinGame.html';

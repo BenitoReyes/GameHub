@@ -18,8 +18,6 @@ const STREAM_API_KEY = process.env.STREAM_API_KEY;
 const STREAM_SECRET = process.env.STREAM_SECRET;
 const serverClient = StreamChat.getInstance(STREAM_API_KEY, STREAM_SECRET);
 const PORT = process.env.PORT || 3000;
-let gameJoined = false;
-let transitioning = true;
 app.use(express.static('FrontEnd')); // Serve frontend files
 app.use(express.json()); // Middleware to parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // parse form bodies if needed
@@ -145,16 +143,18 @@ io.on('connection', async (socket) => {
       await channel.create();
       await channel.watch();
       socket.join(roomId);
-      gameJoined = true;
-      transitioning = false;
       socket.emit('assign-role', 'red');
       socket.emit('game-created', {roomId, userId, token, role:'red', username});
       //players.push(socket.id);
     });
 
-    socket.on('join-room', (roomId) => {
+    socket.on('join-room', async (roomId) => {
       socket.join(roomId);
-      console.log(`Socket ${socket.id} rejoined room ${roomId}`);
+      await prisma.room.update({
+        where: { id: roomId },
+        data: { inRoom: { increment: 1 } }
+      });
+      console.log(`Socket ${socket.id} joined room ${roomId}`);
     });
 
     socket.on('join-game', async (hostUsername) => {
@@ -214,8 +214,6 @@ io.on('connection', async (socket) => {
       });
       socket.emit('assign-role', role);
       socket.join(roomId);
-      gameJoined = true;
-      transitioning = false;
       socket.emit('game-joined', { roomId, userId, token, role, username });
       const channel = serverClient.channel('messaging', roomId);
       await channel.addMembers([userId]);
@@ -267,43 +265,30 @@ io.on('connection', async (socket) => {
       });
       socket.to(roomId).emit('opponent-move', data);
     });
-
-    socket.on('disconnect', async () => {
-        if(transitioning){
-          return;
-        }
-        if(gameJoined){
-          gameJoined = false;
-          return;
-        }
-        const room = await prisma.room.findFirst({
-          where: { hostId: userId },
-          orderBy: { createdAt: 'desc' },
-          select: { id: true, inRoom: true }
-        });
-        if (!room) {
-          console.log(`No room found for host ${userId}`);
-          return;
-        }
-        const roomId = room.id;
+    
+    socket.on('minusRoom', async (roomId) => {
         await prisma.room.update({
           where: { id: roomId },
-          data: { inRoom: { decrement: 1 } }  
+          data: { inRoom: { decrement: 1 } }
         });
-        const participant = await prisma.roomParticipant.findUnique({
-          where: { userId_roomId : { userId,roomId } },
-          select: { roomId: true }
-        });
-        if (!participant) {
-          console.log(`No participant record found for user ${userId}`);
-          return;
-        }
-        const updatedRoom = await prisma.room.findUnique({
+    });
+
+    socket.on('leave-game', async (roomId ) => {
+      setTimeout(async () => {
+      const oldroom = await prisma.room.update({
           where: { id: roomId },
-          select: { inRoom: true }
-        });
-        console.log(updatedRoom.inRoom);
-        if(updatedRoom.inRoom <= 0){
+          data: { inRoom: { decrement: 1 } }  
+      });
+      if(!oldroom){
+        console.log(`Room ${roomId} not found while leaving`);
+        return;
+      }
+      const room = await prisma.room.findUnique({
+        where: { id: roomId },
+        select: { inRoom: true, participants: true }
+      });
+      console.log(`User ${userId} left room ${roomId} # current inRoom: ${room.inRoom}`);
+      if(room.inRoom <= 0){
           await prisma.roomParticipant.deleteMany({
             where: { roomId: roomId }
           });
@@ -312,9 +297,14 @@ io.on('connection', async (socket) => {
           });
           console.log(`Room ${roomId} deleted as it became empty`);
         }
-        transitioning = true;
+      }, 5000); // 5 second delay
+    });
+
+    socket.on('disconnect', async () => {
+      console.log(`Socket ${socket.id} disconnected`);
       });
     });
+
 server.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
 });

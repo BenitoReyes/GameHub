@@ -41,23 +41,6 @@
                     });
                 });
             });
-            // called when disconnected
-            socket.on('room-list-update', (rooms) => {
-                document.getElementById('roomList').innerHTML = rooms.map(room => `
-                    <div class="room-entry">
-                        <span>Username: ${room.host.username}</span>
-                        <span>, Participants: ${room.participants.length}</span>
-                        <span>, Spectators: ${room.participants.length <= 2 ? 0 : room.participants.length - 2}</span>
-                        <button class="joinBtn" data-room-hostUsername="${room.host.username}">Join</button> 
-                    </div>
-                `).join('');
-                document.querySelectorAll('.joinBtn').forEach(button => {
-                    button.addEventListener('click', () => {
-                        const roomHostUsername = button.getAttribute('data-room-hostUsername');
-                        socket.emit('join-game', roomHostUsername);
-                    });
-                });
-            });
         </script>
     </body>
 </html>

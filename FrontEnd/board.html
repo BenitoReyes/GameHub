@@ -74,6 +74,10 @@
                 window.IS_BOARD_PAGE = true;
                 renderScores();
                 const urlParams = new URLSearchParams(window.location.search);
+                const checkRoomId = sessionStorage.getItem('roomId');
+                if(!checkRoomId){
+                    sessionStorage.setItem('roomId', urlParams.get('roomId') || '');
+                }
                 const roomId = urlParams.get('roomId') || sessionStorage.getItem('roomId');
                 const userId = sessionStorage.getItem('userId');
                 const token = sessionStorage.getItem('token');
@@ -108,6 +112,14 @@
                 socket.emit('request-board', scriptRoomId);
                 // Now that DOM is ready and role is assigned, initialize board
                 initializeBoard();
+            });
+
+            window.addEventListener('beforeunload', () => {
+                const roomId = sessionStorage.getItem('roomId');
+                if(roomId){
+                    socket.emit('minusRoom', roomId);
+                    socket.emit('leave-game', roomId);
+                }
             });
         </script>
     </body>
