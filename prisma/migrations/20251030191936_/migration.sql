@@ -1,3 +1,0 @@
--- AlterTable
-ALTER TABLE "public"."Room" ADD COLUMN     "blueScore" INTEGER NOT NULL DEFAULT 0,
-ADD COLUMN     "redScore" INTEGER NOT NULL DEFAULT 0;

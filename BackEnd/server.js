@@ -163,18 +163,13 @@ io.on('connection', async (socket) => {
       console.log(`Socket ${socket.id} joined room ${roomId}`);
     });
 
-    socket.on('join-game', async (hostUsername) => {
+    socket.on('join-game', async (roomId) => {
       const token = serverClient.createToken(userId);
-      const hostUser = await prisma.user.findUnique({
-        where: { username: hostUsername },
-        select: { rooms: true, id: true }
-      });
       const room = await prisma.room.findFirst({
-        where: { hostId: hostUser.id },
+        where: { id: roomId },
         include: { participants: true },
         orderBy: { createdAt: 'desc' }
       });
-      const roomId = room.id;
       if (!room) {
         socket.emit('error', 'Room not found');
         return;

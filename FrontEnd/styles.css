@@ -40,7 +40,6 @@ body {
 #turnIndicator.red { color: #ff5858; border: 1px solid rgba(255,88,88,0.08); }
 #turnIndicator.blue { color: #4169e1; border: 1px solid rgba(255,210,77,0.08); }
 
-
 #game-board { 
   display: grid;
   grid-template-columns: repeat(7, 60px);
