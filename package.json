@@ -1,5 +1,5 @@
 {
-  "name": "connect-four-online",
+  "name": "gamehub",
   "version": "1.0.0",
   "description": "The github",
   "main": "FrontEnd/index.js",
@@ -11,15 +11,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/BenitoReyes/Connect-Four-Online.git"
+    "url": "git+https://github.com/BenitoReyes/GameHub.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/BenitoReyes/Connect-Four-Online/issues"
+    "url": "https://github.com/BenitoReyes/GameHub/issues"
   },
-  "homepage": "https://github.com/BenitoReyes/Connect-Four-Online#readme",
+  "homepage": "https://github.com/BenitoReyes/GameHub#readme",
   "dependencies": {
     "@prisma/client": "^6.16.2",
     "@prisma/extension-accelerate": "^2.0.2",
