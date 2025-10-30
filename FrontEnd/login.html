@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GameHub - Login</title>
+    <script src="theme.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
         
@@ -22,6 +23,13 @@
             min-height: 100vh;
             position: relative;
             overflow: hidden;
+            color: #ffffff;
+        }
+
+        /* Light Mode */
+        body.light {
+            background: linear-gradient(180deg, #f0f8ff 0%, #e1f5fe 100%);
+            color: #2d3748;
         }
 
         /* Animated stars background */
@@ -40,6 +48,19 @@
             background-size: 200px 200px;
             animation: stars 20s linear infinite;
             opacity: 0.5;
+            z-index: 0;
+        }
+
+        /* Light Mode Stars */
+        body.light::before {
+            background-image: 
+                radial-gradient(2px 2px at 20% 30%, #fbbf24, transparent),
+                radial-gradient(2px 2px at 60% 70%, #f59e0b, transparent),
+                radial-gradient(1px 1px at 50% 50%, #fbbf24, transparent),
+                radial-gradient(1px 1px at 80% 10%, #f59e0b, transparent),
+                radial-gradient(2px 2px at 90% 60%, #fbbf24, transparent),
+                radial-gradient(1px 1px at 33% 80%, #f59e0b, transparent);
+            opacity: 0.4;
         }
 
         @keyframes stars {
