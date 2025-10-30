@@ -233,6 +233,30 @@ io.on('connection', async (socket) => {
       }
     });
 
+    socket.on('getScores', async (roomId) => {
+      const room = await prisma.room.findUnique({
+        where: { id: roomId },
+        select: { redScore: true, blueScore: true }
+      });
+      socket.emit('scoreUpdate', { redScore:room.redScore, blueScore:room.blueScore });
+    });
+
+    socket.on('incrementRedScore', async (roomId) => {
+      const room = await prisma.room.update({
+        where: { id: roomId },
+        data: { redScore: { increment: 1 } },
+        select: { redScore: true }
+      });
+    });
+
+    socket.on('incrementBlueScore', async (roomId) => {
+      const room = await prisma.room.update({
+        where: { id: roomId },
+        data: { blueScore: { increment: 1 } },
+        select: { blueScore: true }
+      });
+    });
+
     socket.on('get-rooms', async () => {
       const rooms = await prisma.room.findMany({
         where: { isPublic: true },
@@ -267,6 +291,7 @@ io.on('connection', async (socket) => {
       });
       socket.to(roomId).emit('opponent-move', data);
     });
+
     socket.on('reset-game', async (board, roomId) => {
       await prisma.room.update({
         where: { id: roomId },
@@ -274,6 +299,7 @@ io.on('connection', async (socket) => {
       });
       socket.to(roomId).emit('game-reset', board);
     });
+
     socket.on('leave-game', async (roomId ) => {
       console.log('leave-game event received for room:', roomId);
       setTimeout(async () => {
@@ -305,7 +331,7 @@ io.on('connection', async (socket) => {
     socket.on('disconnect', async () => {
       console.log(`Socket ${socket.id} disconnected`);
       });
-    });
+  });
 
 server.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);

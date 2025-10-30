@@ -108,6 +108,10 @@
                     updateTurnIndicator();
                 });
                 socket.emit('request-board', scriptRoomId);
+                socket.emit('getScores', scriptRoomId);
+                socket.on('scoreUpdate', ({ redScore: rScore, blueScore: bScore }) => {
+                    renderScores(rScore, bScore);
+                });
                 // Now that DOM is ready and role is assigned, initialize board
                 initializeBoard();
             });
