@@ -6,7 +6,6 @@
     <title>Drop 4 - Join Game</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-        
         * {
             margin: 0;
             padding: 0;
@@ -47,7 +46,10 @@
             from { transform: translateY(0); }
             to { transform: translateY(-200px); }
         }
-
+        .searchContainer{
+            z-index: 2;
+            display:none;
+        }
         .join-container {
             background: linear-gradient(135deg, #2d3561 0%, #1f2544 100%);
             border: 6px solid #fff;
@@ -55,9 +57,8 @@
                 0 0 0 6px #000,
                 0 15px 40px rgba(0, 0, 0, 0.6),
                 inset 0 0 30px rgba(0, 0, 0, 0.3);
-            padding: 40px;
+            margin: 10%;
             width: 100%;
-            max-width: 500px;
             position: relative;
             z-index: 1;
             animation: slideDown 0.8s ease-out;
@@ -109,9 +110,10 @@
         }
 
         .icon-container {
-            text-align: center;
+            display: flex;
+            justify-content: flex-end;
             font-size: 48px;
-            margin-bottom: 30px;
+            margin-bottom: auto;
         }
 
         label {
@@ -151,6 +153,21 @@
             font-size: 11px;
         }
 
+        .room-entry {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+        }
+
+        .room-info span {
+            margin-right: 12px;
+            color: #fff;
+        }
+
         button {
             background: linear-gradient(180deg, #4ecdc4 0%, #44a08d 100%);
             color: white;
@@ -167,7 +184,7 @@
             transition: all 0.1s;
             letter-spacing: 2px;
         }
-
+        
         button:hover {
             background: linear-gradient(180deg, #5eddd4 0%, #54b09d 100%);
             transform: translateY(-2px);
@@ -179,6 +196,13 @@
             box-shadow: 0 0 0 4px #000, 0 2px 0 #000;
         }
 
+        .joinBtn {
+            width: 25%;
+        }
+        .searchBtn{
+            width: 10%;
+            margin: 0.5%;
+        }
         /* Back button */
         .back-btn {
             position: absolute;
@@ -270,37 +294,42 @@
     <div class="floating-chip chip-2">🔵</div>
     <div class="floating-chip chip-3">🔴</div>
     <div class="floating-chip chip-4">🔵</div>
-
-    <div class="join-container">
-        <div class="icon-container">🎯</div>
-        <h1>JOIN A GAME ROOM</h1>
-        <label for="roomIdInput">► ENTER ROOM CODE:</label>
-        <input type="text" id="roomIdInput" placeholder="XXXX-XXXX" />
-        <button id="joinRoom">► JOIN ROOM</button>
+    <div class="searchContainer">
+        <h1>Join a Game Room</h1>
+            <input type="text" id="roomIdInput" placeholder="Enter roomId">
+            <button id="joinRoom">Join Room</button>
     </div>
-    <div class="join-container" style="margin-top: 30px;">
-        <div class="icon-container">📋</div>
+    <div class="join-container">
+        <div class="icon-container"> <button id="searchBtn" class="searchBtn">🔍</button> </div>
         <h1>AVAILABLE ROOMS</h1>
         <div id="roomList" style="max-height: 300px; overflow-y: auto; margin-top: 20px; color: #fff; font-size: 12px; letter-spacing: 1px;">
             <!-- Room entries will be populated here -->
         </div>
-    </div>
+    </div> 
+
     <script src="/socket.io/socket.io.js"></script>
     <script src="script.js"></script>
     <script>
+        document.getElementById('searchBtn').addEventListener('click', () => {
+            document.querySelector('.join-container').style.display = 'none';
+            document.querySelector('.searchContainer').style.display = 'block';
+        });
+
         document.getElementById('joinRoom').addEventListener('click', async () => {
             const roomId = document.getElementById('roomIdInput').value;
             socket.emit('join-game', roomId);
         });
+
         socket.emit('get-rooms');
-        // called when manually joined
         socket.on('room-list', (rooms) => {
             document.getElementById('roomList').innerHTML = rooms.map(room => `
                 <div class="room-entry">
-                    <span>Username: ${room.host.username}</span>
-                    <span>, Participants: ${room.participants.length}</span>
-                    <span>, Spectators: ${room.participants.length <= 2 ? 0 : room.participants.length - 2}</span>
-                    <button class="joinBtn" data-roomId="${room.id}">Join</button> 
+                    <div class = "room-info">
+                        <span>Username: ${room.host.username}</span>
+                        <span>, Participants: ${room.participants.length}</span>
+                        <span>, Spectators: ${room.participants.length <= 2 ? 0 : room.participants.length - 2}</span>
+                    </div>
+                    <button id="joinBtn" class="joinBtn" data-roomId="${room.id}">Join</button> 
                 </div>
             `).join('');
             document.querySelectorAll('.joinBtn').forEach(button => {
