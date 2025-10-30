@@ -1,6 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
-  binaryTargets = ["native","windows", "debian-openssl-3.0.x"]
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "windows", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -22,9 +22,25 @@ model Room {
   hostId       String
   isPublic     Boolean           @default(true)
   createdAt    DateTime          @default(now())
+  board        Json
+  redScore     Int               @default(0)
+  blueScore    Int               @default(0)
+  inRoom       Int
   host         User              @relation("RoomHost", fields: [hostId], references: [id])
-  board        Json             // Stores the 6x7 board as a 2D array
   participants RoomParticipant[]
+}
+
+model RoomParticipant {
+  id         Int        @id @default(autoincrement())
+  userId     String
+  roomId     String
+  permission Permission
+  joinedAt   DateTime   @default(now())
+  messages   Message[]
+  room       Room       @relation(fields: [roomId], references: [id])
+  user       User       @relation(fields: [userId], references: [id])
+
+  @@unique([userId, roomId])
 }
 
 model Message {
@@ -34,19 +50,6 @@ model Message {
   text        String
   timestamp   DateTime        @default(now())
   participant RoomParticipant @relation(fields: [senderId, roomId], references: [userId, roomId])
-}
-
-model RoomParticipant {
-  id       Int       @id @default(autoincrement())
-  userId   String
-  roomId   String
-  permission     Permission
-  joinedAt DateTime  @default(now())
-  user     User      @relation(fields: [userId], references: [id])
-  room     Room      @relation(fields: [roomId], references: [id])
-  messages Message[]
-
-  @@unique([userId, roomId])
 }
 
 enum Permission {

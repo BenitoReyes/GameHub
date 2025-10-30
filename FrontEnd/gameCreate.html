@@ -246,18 +246,16 @@
             <button id="createRoom">► CREATE ROOM</button>
             <button id="joinRoom">► JOIN ROOM</button>
         </div>
-    </div>
-
-    <script src="stream-chat.bundle.js"></script>
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="script.js"></script>
-    <script>
-        document.getElementById('createRoom').addEventListener('click', async () => {
-            socket.emit('create-game');
-        });
-        document.getElementById('joinRoom').addEventListener('click', async () => {
-            location.href = 'joinGame.html';
-        });
-    </script>
-</body>
+        <script src="stream-chat.bundle.js"></script>
+        <script src="/socket.io/socket.io.js"></script>
+        <script src="script.js"></script>
+        <script>
+            document.getElementById('createRoom').addEventListener('click', async () => {
+                socket.emit('create-game');
+            });
+            document.getElementById('joinRoom').addEventListener('click', async () => {
+                location.href = 'joinGame.html';
+            });
+        </script>
+    </body>
 </html>

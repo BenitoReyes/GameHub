@@ -20,10 +20,8 @@ let STREAM_API_KEY; // globalization of stream api key
 let chatClient; // will hold the StreamChat client instance
 
 // Scores (kept in-memory while the page is open)
-let redScore = 0;
-let blueScore = 0;
 
-function renderScores() {
+async function renderScores(redScore, blueScore) {
   let redEl = document.getElementById('redScore');
   let blueEl = document.getElementById('blueScore');
   if (typeof window.IS_BOARD_PAGE === 'undefined') {
@@ -63,7 +61,6 @@ function renderScores() {
     });
     document.body.appendChild(blueEl);
   }
-  
   redEl.textContent = ` ${redScore}`;
   blueEl.textContent = ` ${blueScore}`;
   }
@@ -105,8 +102,9 @@ function showResultModal(message) {
     btn.addEventListener('click', () => {
       modal.style.display = 'none';
       // Tell server and reset locally
-      try { socket.emit('reset-game'); } catch (e) { /* ignore */ }
       try { resetGame(); } catch (e) { /* ignore */ }
+      try { socket.emit('reset-game', board, scriptRoomId); } catch (e) { /* ignore */ }
+      try{socket.emit('getScores', scriptRoomId);} catch(e){/*ignore*/}
     });
 
     content.appendChild(btn);
@@ -245,8 +243,12 @@ function initializeBoard() {
       if (checkWin(currentPlayer)) {
         gameOver = true;
         // increment score for current player
-        if (currentPlayer === PLAYER1) redScore++; else blueScore++;
-        renderScores();
+        if (currentPlayer === PLAYER1){
+          socket.emit('incrementRedScore', scriptRoomId);
+        }  else {
+          socket.emit('incrementBlueScore', scriptRoomId);
+        }
+        socket.emit('getScores', scriptRoomId);
         updateTurnIndicator();
         setTimeout(() => {
           showResultModal(`${currentPlayer.toUpperCase()} wins!`);
@@ -466,8 +468,12 @@ socket.on('opponent-move', (data) => {
   if (checkWin(data.player)) {
     gameOver = true;
     // increment score for winning player
-    if (data.player === PLAYER1) redScore++; else blueScore++;
-    renderScores();
+    if (data.player === PLAYER1){
+      socket.emit('incrementRedScore', scriptRoomId);
+    } else {
+      socket.emit('incrementBlueScore', scriptRoomId);
+    }
+    socket.emit('getScores', scriptRoomId);
     setTimeout(() => {
       showResultModal(`${data.player.toUpperCase()} wins!`);
     }, 100);

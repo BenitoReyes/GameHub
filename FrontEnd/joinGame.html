@@ -270,22 +270,45 @@
     <div class="floating-chip chip-2">🟡</div>
     <div class="floating-chip chip-3">🔴</div>
     <div class="floating-chip chip-4">🟡</div>
-
     <div class="join-container">
         <div class="icon-container">🎯</div>
         <h1>JOIN A GAME ROOM</h1>
-        <label for="roomIdInput">► ENTER ROOM CODE:</label>
-        <input type="text" id="roomIdInput" placeholder="XXXX-XXXX" />
+        <label for="usernameInput">► ENTER USERNAME OF HOST:</label>
+        <input type="text" id="usernameInput" placeholder="XXXX-XXXX" />
         <button id="joinRoom">► JOIN ROOM</button>
     </div>
-
+    <div class="join-container" style="margin-top: 30px;">
+        <div class="icon-container">📋</div>
+        <h1>AVAILABLE ROOMS</h1>
+        <div id="roomList" style="max-height: 300px; overflow-y: auto; margin-top: 20px; color: #fff; font-size: 12px; letter-spacing: 1px;">
+            <!-- Room entries will be populated here -->
+        </div>
+    </div>
     <script src="/socket.io/socket.io.js"></script>
     <script src="script.js"></script>
     <script>
         document.getElementById('joinRoom').addEventListener('click', async () => {
-            const roomId = document.getElementById('roomIdInput').value;
-            socket.emit('join-game', roomId);
+            const username = document.getElementById('usernameInput').value;
+            socket.emit('join-game', username);
+        });
+        socket.emit('get-rooms');
+        // called when manually joined
+        socket.on('room-list', (rooms) => {
+            document.getElementById('roomList').innerHTML = rooms.map(room => `
+                <div class="room-entry">
+                    <span>Username: ${room.host.username}</span>
+                    <span>, Participants: ${room.participants.length}</span>
+                    <span>, Spectators: ${room.participants.length <= 2 ? 0 : room.participants.length - 2}</span>
+                    <button class="joinBtn" data-room-hostUsername="${room.host.username}">Join</button> 
+                </div>
+            `).join('');
+            document.querySelectorAll('.joinBtn').forEach(button => {
+                button.addEventListener('click', () => {
+                    const roomHostUsername = button.getAttribute('data-room-hostUsername');
+                    socket.emit('join-game', roomHostUsername);
+                });
+            });
         });
     </script>
-</body>
+    </body>
 </html>
