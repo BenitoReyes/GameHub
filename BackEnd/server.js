@@ -113,7 +113,7 @@ io.on('connection', async (socket) => {
       const token = serverClient.createToken(userId)
       const emptyBoard = Array.from({ length: 6 }, () => Array(7).fill(0));
       await prisma.room.create({
-        data: { id: roomId, host: {connect: {id:userId}}, isPublic: true, board: emptyBoard, inRoom: 1 }
+        data: { id: roomId, host: {connect: {id:userId}}, isPublic: true, board: emptyBoard, inRoom: 0 }
       });
       await prisma.user.update({
         where: { id: userId },
@@ -149,11 +149,16 @@ io.on('connection', async (socket) => {
     });
 
     socket.on('join-room', async (roomId) => {
-      socket.join(roomId);
-      await prisma.room.update({
-        where: { id: roomId },
-        data: { inRoom: { increment: 1 } }
-      });
+      console.log('join-room event received for room:', roomId);
+      try {
+        await prisma.room.update({
+          where: { id: roomId },
+          data: { inRoom: { increment: 1 } }
+        });
+        console.log(`inRoom incremented for ${roomId}`);
+      } catch (err) {
+        console.error(`Failed to increment inRoom for ${roomId}:`, err);
+      }
       console.log(`Socket ${socket.id} joined room ${roomId}`);
     });
 
@@ -208,10 +213,6 @@ io.on('connection', async (socket) => {
         create: { roomId, userId, permission},
         update: { permission } // optional: update role if needed 
       });
-      await prisma.room.update({
-        where: { id: roomId },
-        data: { inRoom: { increment: 1 } }
-      });
       socket.emit('assign-role', role);
       socket.join(roomId);
       socket.emit('game-joined', { roomId, userId, token, role, username });
@@ -265,15 +266,9 @@ io.on('connection', async (socket) => {
       });
       socket.to(roomId).emit('opponent-move', data);
     });
-    
-    socket.on('minusRoom', async (roomId) => {
-        await prisma.room.update({
-          where: { id: roomId },
-          data: { inRoom: { decrement: 1 } }
-        });
-    });
 
     socket.on('leave-game', async (roomId ) => {
+      console.log('leave-game event received for room:', roomId);
       setTimeout(async () => {
       const oldroom = await prisma.room.update({
           where: { id: roomId },

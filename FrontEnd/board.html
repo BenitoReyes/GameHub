@@ -48,7 +48,6 @@
                 <div class="cell" data-row="4" data-col="4"></div>
                 <div class="cell" data-row="4" data-col="5"></div>
                 <div class="cell" data-row="4" data-col="6"></div>
-                
                 <div class="cell" data-row="5" data-col="0"></div>
                 <div class="cell" data-row="5" data-col="1"></div>
                 <div class="cell" data-row="5" data-col="2"></div>
@@ -103,7 +102,6 @@
                 } else {
                     showRoleModal("You are " + role + ", RoomID: " + roomId);
                 }
-                
                 socket.on('sync-board', (boardData) => {
                     board = boardData;
                     updateReloadedUI(board); // ← this should redraw the board
@@ -113,11 +111,9 @@
                 // Now that DOM is ready and role is assigned, initialize board
                 initializeBoard();
             });
-
             window.addEventListener('beforeunload', () => {
                 const roomId = sessionStorage.getItem('roomId');
                 if(roomId){
-                    socket.emit('minusRoom', roomId);
                     socket.emit('leave-game', roomId);
                 }
             });
