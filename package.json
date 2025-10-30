@@ -7,7 +7,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node BackEnd/server.js",
-    "renderBuild": "npm install && npm install prisma --save-dev && npx prisma db pull"
+    "renderBuild": "npm install && npm install prisma --save-dev && npx prisma db pull && npx prisma generate"
   },
   "repository": {
     "type": "git",
