@@ -37,15 +37,154 @@
                 radial-gradient(1px 1px at 50% 50%, white, transparent),
                 radial-gradient(1px 1px at 80% 10%, white, transparent),
                 radial-gradient(2px 2px at 90% 60%, white, transparent),
-                radial-gradient(1px 1px at 33% 80%, white, transparent);
-            background-size: 200px 200px;
-            animation: stars 20s linear infinite;
+                radial-gradient(1px 1px at 33% 80%, white, transparent),
+                radial-gradient(1px 1px at 15% 60%, white, transparent),
+                radial-gradient(2px 2px at 75% 25%, white, transparent),
+                radial-gradient(1px 1px at 40% 90%, white, transparent),
+                radial-gradient(1px 1px at 95% 40%, white, transparent);
+            background-size: 200px 200px, 180px 180px, 220px 220px;
+            animation: stars 25s linear infinite, twinkle 4s ease-in-out infinite;
             opacity: 0.5;
         }
 
+        /* Moon */
+        body::after {
+            content: '';
+            position: absolute;
+            top: 15%;
+            right: 10%;
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle at 30% 30%, #f7fafc 0%, #e2e8f0 40%, #cbd5e0 100%);
+            border-radius: 50%;
+            opacity: 0.9;
+            z-index: 1;
+            animation: moonGlow 6s ease-in-out infinite;
+            box-shadow: 
+                0 0 20px rgba(255, 255, 255, 0.3),
+                0 0 40px rgba(255, 255, 255, 0.2),
+                0 0 60px rgba(255, 255, 255, 0.1),
+                inset -8px -8px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        /* Shooting Stars */
+        .shooting-star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: linear-gradient(45deg, transparent, white, transparent);
+            border-radius: 50%;
+            opacity: 0;
+            animation: shootingStar 3s linear infinite;
+        }
+
+        .shooting-star:nth-child(1) {
+            top: 20%;
+            left: 10%;
+            animation-delay: 0s;
+            animation-duration: 2.5s;
+        }
+
+        .shooting-star:nth-child(2) {
+            top: 40%;
+            left: 30%;
+            animation-delay: 8s;
+            animation-duration: 3s;
+        }
+
+        .shooting-star:nth-child(3) {
+            top: 60%;
+            left: 20%;
+            animation-delay: 15s;
+            animation-duration: 2.8s;
+        }
+
+        .shooting-star:nth-child(4) {
+            top: 30%;
+            left: 60%;
+            animation-delay: 22s;
+            animation-duration: 3.2s;
+        }
+
+        .shooting-star::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 50px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+            transform-origin: 0 50%;
+            transform: rotate(45deg);
+        }
+
         @keyframes stars {
-            from { transform: translateY(0); }
-            to { transform: translateY(-200px); }
+            from { transform: translateY(0) translateX(0); }
+            to { transform: translateY(-200px) translateX(-100px); }
+        }
+
+        @keyframes twinkle {
+            0% { opacity: 0.4; }
+            33% { opacity: 0.7; }
+            66% { opacity: 0.4; }
+            100% { opacity: 0.4; }
+        }
+
+        @keyframes shootingStar {
+            0% { 
+                transform: translateX(-100px) translateY(-100px);
+                opacity: 0;
+            }
+            5% { opacity: 0.3; }
+            15% { opacity: 1; }
+            85% { opacity: 1; }
+            95% { opacity: 0.3; }
+            100% { 
+                transform: translateX(100vw) translateY(100vh);
+                opacity: 0;
+            }
+        }
+
+        @keyframes moonGlow {
+            0% { 
+                box-shadow: 0 0 20px rgba(255, 255, 255, 0.3),
+                           0 0 40px rgba(255, 255, 255, 0.2),
+                           0 0 60px rgba(255, 255, 255, 0.1);
+                transform: scale(1);
+            }
+            50% { 
+                box-shadow: 0 0 30px rgba(255, 255, 255, 0.4),
+                           0 0 60px rgba(255, 255, 255, 0.3),
+                           0 0 90px rgba(255, 255, 255, 0.2);
+                transform: scale(1.03);
+            }
+            100% { 
+                box-shadow: 0 0 20px rgba(255, 255, 255, 0.3),
+                           0 0 40px rgba(255, 255, 255, 0.2),
+                           0 0 60px rgba(255, 255, 255, 0.1);
+                transform: scale(1);
+            }
+        }
+
+        @keyframes sunGlow {
+            0% { 
+                box-shadow: 0 0 30px rgba(251, 191, 36, 0.6),
+                           0 0 60px rgba(251, 191, 36, 0.4),
+                           0 0 90px rgba(251, 191, 36, 0.2);
+                transform: scale(1);
+            }
+            50% { 
+                box-shadow: 0 0 40px rgba(251, 191, 36, 0.8),
+                           0 0 80px rgba(251, 191, 36, 0.6),
+                           0 0 120px rgba(251, 191, 36, 0.3);
+                transform: scale(1.04);
+            }
+            100% { 
+                box-shadow: 0 0 30px rgba(251, 191, 36, 0.6),
+                           0 0 60px rgba(251, 191, 36, 0.4),
+                           0 0 90px rgba(251, 191, 36, 0.2);
+                transform: scale(1);
+            }
         }
 
         .menu-container {
@@ -309,9 +448,121 @@
                 font-size: 24px;
             }
         }
+
+        /* Light Mode Styles */
+        body.light {
+            background: linear-gradient(180deg, #d6eaff 0%, #b3d9ff 100%);
+            color: #2d3748;
+        }
+
+        /* Hide dark mode elements in light mode */
+        body.light::after,
+        body.light .shooting-star {
+            display: none;
+        }
+
+        /* Sun for Light Mode */
+        body.light::after {
+            content: '';
+            position: absolute;
+            top: 15%;
+            right: 10%;
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle at 30% 30%, #fef08a 0%, #fbbf24 50%, #f59e0b 100%);
+            border-radius: 50%;
+            opacity: 0.9;
+            z-index: 1;
+            display: block;
+            animation: sunGlow 5s ease-in-out infinite;
+            box-shadow: 
+                0 0 30px rgba(251, 191, 36, 0.6),
+                0 0 60px rgba(251, 191, 36, 0.4),
+                0 0 90px rgba(251, 191, 36, 0.2);
+        }
+
+        /* Light Mode Clouds Background */
+        body.light::before {
+            content: '';
+            position: absolute;
+            width: 300%;
+            height: 100%;
+            background-image: 
+                /* Large clouds */
+                radial-gradient(ellipse 120px 40px at 25% 20%, rgba(255, 255, 255, 0.8), transparent 50%),
+                radial-gradient(ellipse 80px 30px at 75% 35%, rgba(255, 255, 255, 0.6), transparent 50%),
+                radial-gradient(ellipse 100px 35px at 50% 60%, rgba(255, 255, 255, 0.7), transparent 50%),
+                radial-gradient(ellipse 90px 25px at 15% 80%, rgba(255, 255, 255, 0.5), transparent 50%),
+                /* Medium clouds */
+                radial-gradient(ellipse 60px 20px at 85% 15%, rgba(240, 248, 255, 0.6), transparent 50%),
+                radial-gradient(ellipse 70px 25px at 35% 45%, rgba(240, 248, 255, 0.5), transparent 50%),
+                radial-gradient(ellipse 55px 18px at 65% 75%, rgba(240, 248, 255, 0.7), transparent 50%),
+                /* Small clouds */
+                radial-gradient(ellipse 40px 15px at 45% 25%, rgba(248, 250, 252, 0.4), transparent 50%),
+                radial-gradient(ellipse 35px 12px at 80% 55%, rgba(248, 250, 252, 0.5), transparent 50%),
+                radial-gradient(ellipse 45px 16px at 20% 65%, rgba(248, 250, 252, 0.6), transparent 50%);
+            background-size: 400px 300px, 350px 250px, 300px 200px;
+            animation: clouds 30s linear infinite;
+            opacity: 0.8;
+            z-index: 0;
+        }
+
+        @keyframes clouds {
+            from { transform: translateX(0); }
+            to { transform: translateX(-33.33%); }
+        }
+
+        body.light .game-title {
+            color: #ffffff;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        body.light .back-btn {
+            background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+            color: #ffffff;
+        }
+
+        body.light .menu-btn:not(.primary):not(.secondary):not(.info) {
+            background: linear-gradient(135deg, #60a5fa 0%, #4299e1 50%, #3182ce 100%);
+            border: 4px solid #ffffff;
+            box-shadow: 0 0 0 4px #000, 0 6px 0 #000;
+            color: #ffffff;
+        }
+
+        body.light .menu-btn:not(.primary):not(.secondary):not(.info):hover {
+            background: linear-gradient(135deg, #38b2ac 0%, #319795 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 0 0 4px #000, 0 8px 0 #000;
+        }
+
+        body.light .menu-btn.secondary {
+            background: linear-gradient(135deg, #805ad5 0%, #6b46c1 100%);
+        }
+
+        body.light .menu-btn.secondary:hover {
+            background: linear-gradient(135deg, #553c9a 0%, #4c1d95 100%);
+        }
+
+        body.light .menu-btn.info {
+            background: linear-gradient(135deg, #38b2ac 0%, #319795 100%);
+        }
+
+        body.light .menu-btn.info:hover {
+            background: linear-gradient(135deg, #2c7a7b 0%, #285e61 100%);
+        }
+
+        body.light .floating-chip {
+            filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));
+        }
     </style>
 </head>
 <body>
+    <!-- Shooting Stars for Dark Mode -->
+    <div class="shooting-star"></div>
+    <div class="shooting-star"></div>
+    <div class="shooting-star"></div>
+    <div class="shooting-star"></div>
+    
     <a href="homepage.html" class="back-btn">◄ BACK</a>
 
     <div class="floating-chip chip-1">🔴</div>
@@ -363,4 +614,5 @@
         </div>
     </div>
 </body>
+<script src="theme.js"></script>
 </html>
