@@ -149,6 +149,7 @@ io.on('connection', async (socket) => {
     });
 
     socket.on('join-room', async (roomId) => {
+      socket.join(roomId);
       console.log('join-room event received for room:', roomId);
       try {
         await prisma.room.update({
@@ -266,7 +267,13 @@ io.on('connection', async (socket) => {
       });
       socket.to(roomId).emit('opponent-move', data);
     });
-
+    socket.on('reset-game', async (board, roomId) => {
+      await prisma.room.update({
+        where: { id: roomId },
+        data: { board }
+      });
+      socket.to(roomId).emit('game-reset', board);
+    });
     socket.on('leave-game', async (roomId ) => {
       console.log('leave-game event received for room:', roomId);
       setTimeout(async () => {

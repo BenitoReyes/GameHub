@@ -105,8 +105,8 @@ function showResultModal(message) {
     btn.addEventListener('click', () => {
       modal.style.display = 'none';
       // Tell server and reset locally
-      try { socket.emit('reset-game'); } catch (e) { /* ignore */ }
       try { resetGame(); } catch (e) { /* ignore */ }
+      try { socket.emit('reset-game', board, scriptRoomId); } catch (e) { /* ignore */ }
     });
 
     content.appendChild(btn);
