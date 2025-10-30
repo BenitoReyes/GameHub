@@ -25,7 +25,7 @@ async function renderScores(redScore, blueScore) {
   let redEl = document.getElementById('redScore');
   let blueEl = document.getElementById('blueScore');
   if (typeof window.IS_BOARD_PAGE === 'undefined') {
-  window.IS_BOARD_PAGE = window.location.href.includes('board.html');
+  window.IS_BOARD_PAGE = window.location.href.includes('connect4.html');
   }
   if(window.IS_BOARD_PAGE){
   if (!redEl) {
@@ -545,7 +545,7 @@ socket.on('game-created', async ({ roomId, userId, token, role, username}) => {
     sessionStorage.setItem('token', token);
     sessionStorage.setItem('role', role);
     sessionStorage.setItem('username', username);
-    location.href = `board.html?roomId=${roomId}`;
+    location.href = `connect4.html?roomId=${roomId}`;
 } catch (err) {
   console.error('Error in connectToChat:', err);
 }
@@ -559,7 +559,7 @@ socket.on('game-joined', async ({ roomId, userId, token, role, username}) => {
   sessionStorage.setItem('token', token);
   sessionStorage.setItem('role', role);
   sessionStorage.setItem('username', username);
-  location.href = `board.html?roomId=${roomId}`;
+  location.href = `connect4.html?roomId=${roomId}`;
   console.log('Chat connected');
 } catch (err) {
   console.error('Error in connectToChat:', err);

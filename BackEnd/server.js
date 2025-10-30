@@ -55,7 +55,7 @@ app.get('/config', (req, res) => {
         })
       ]);
 
-      res.redirect('gameCreate.html');
+      res.redirect('homepage.html');
     } catch (error) {
       console.error('Error during signup:', error);
       res.json(error);
@@ -87,7 +87,7 @@ app.post('/login', async (req, res) => {
           maxAge: 60 * 60 * 24,
         })
       ]);
-        res.redirect('gameCreate.html');
+        res.redirect('homepage.html');
       }
     }
     } catch (error) {
