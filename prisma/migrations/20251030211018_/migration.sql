@@ -18,7 +18,9 @@ CREATE TABLE "public"."Room" (
     "isPublic" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "board" JSONB NOT NULL,
-    "inRoom" INTEGER NOT NULL,
+    "redScore" INTEGER NOT NULL DEFAULT 0,
+    "blueScore" INTEGER NOT NULL DEFAULT 0,
+    "inRoom" INTEGER NOT NULL DEFAULT 0,
 
     CONSTRAINT "Room_pkey" PRIMARY KEY ("id")
 );

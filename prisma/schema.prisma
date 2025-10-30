@@ -25,7 +25,7 @@ model Room {
   board        Json
   redScore     Int               @default(0)
   blueScore    Int               @default(0)
-  inRoom       Int
+  inRoom       Int               @default(0)
   host         User              @relation("RoomHost", fields: [hostId], references: [id])
   participants RoomParticipant[]
 }
