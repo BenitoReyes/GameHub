@@ -201,7 +201,7 @@ io.on('connection', async (socket) => {
           permission = 'HOST';
         } else {
           role = 'spectator';
-          permission = 'spectator';
+          permission = 'SPECTATOR';
         }
       }
       await prisma.roomParticipant.upsert({
