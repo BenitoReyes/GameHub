@@ -104,6 +104,9 @@ app.post('/login', async (req, res) => {
   await serverClient.upsertUser({ id: 'system-bot', name: 'System Bot' });
 })();
 
+// Store room player information
+const roomPlayers = new Map(); // roomId -> { red: username, blue: username }
+
 //once the backend and frontend are connected via socket.io, at the very start of the projects lifecycle
 io.on('connection', async (socket) => {
     var cookies = cookie.parse(socket.handshake.headers.cookie || '');
@@ -161,6 +164,31 @@ io.on('connection', async (socket) => {
         console.error(`Failed to increment inRoom for ${roomId}:`, err);
       }
       console.log(`Socket ${socket.id} joined room ${roomId}`);
+    });
+
+    // Handle player joining with username
+    socket.on('player-joined', ({ roomId, role, username }) => {
+      console.log(`Player ${username} (${role}) joined room ${roomId}`);
+      
+      // Store player info in memory
+      if (!roomPlayers.has(roomId)) {
+        roomPlayers.set(roomId, {});
+      }
+      const players = roomPlayers.get(roomId);
+      if (role === 'red' || role === 'blue') {
+        players[role] = username;
+      }
+      
+      // Broadcast all current players to everyone in the room
+      io.to(roomId).emit('all-players-info', players);
+    });
+
+    // Handle request for current player names
+    socket.on('request-player-names', (roomId) => {
+      const players = roomPlayers.get(roomId);
+      if (players) {
+        socket.emit('all-players-info', players);
+      }
     });
 
     socket.on('join-game', async (roomId) => {

@@ -6,12 +6,26 @@
         <title>Board Visual</title>
         <link rel="stylesheet" href="styles.css">
     </head>
-    <body>
-        <div class="board-container">
-            <div class="board-header">
-                <h1>Game Board</h1>
+    <body class="game-page">
+        <!-- Red Player Profile (Top Left) -->
+        <div class="profile-container profile-left">
+            <div class="profile-avatar profile-red">
+                <img src="https://images.unsplash.com/photo-1557110437-0bcd0a636d62?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxibGFuayUyMHByb2ZpbGUlMjBhdmF0YXJ8ZW58MXx8fHwxNzYxMTg3ODUxfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral" alt="Red Player">
             </div>
-            <div id="game-board">
+            <span class="profile-username" id="redPlayerName">Player 1</span>
+        </div>
+        
+        <!-- Blue Player Profile (Top Right) -->
+        <div class="profile-container profile-right">
+            <div class="profile-avatar profile-blue">
+                <img src="https://images.unsplash.com/photo-1557110437-0bcd0a636d62?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxibGFuayUyMHByb2ZpbGUlMjBhdmF0YXJ8ZW58MXx8fHwxNzYxMTg3ODUxfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral" alt="Blue Player">
+            </div>
+            <span class="profile-username" id="bluePlayerName">Player 2</span>
+        </div>
+
+        <div class="game-wrapper">
+            <div class="board-container">
+                <div id="game-board">
                 <!-- 6 rows × 7 columns = 42 cells -->
                 <div class="cell" data-row="0" data-col="0"></div>
                 <div class="cell" data-row="0" data-col="1"></div>
@@ -56,15 +70,15 @@
                 <div class="cell" data-row="5" data-col="5"></div>
                 <div class="cell" data-row="5" data-col="6"></div>
             </div>
-        </div>
-        <div id="turnIndicator">Turn: RED
+            <div id="turnIndicator">Turn: RED</div>
         </div>
         <div class="chat-container">
-            <h2>Game Chat</h2>
+            <h2>Live Chat</h2>
             <div id="chatMessages" class="chat-box"></div>
             <input id="chatInput" type="text" placeholder="Type a message..." />
             <button id="sendBtn">Send</button>
         </div>
+    </div>
         <script src="stream-chat.bundle.js"></script>
         <script src="/socket.io/socket.io.js"></script>
         <script src="script.js"></script>
@@ -95,7 +109,38 @@
                 currentPlayer = 'red'; // red always starts
                 isMyTurn = role === currentPlayer;
                 scriptRoomId = roomId;
+                
+                // Update player names based on role
+                if (role === 'red') {
+                    document.getElementById('redPlayerName').textContent = username || 'Player 1';
+                    USER_ROLES[username] = 'red';
+                } else if (role === 'blue') {
+                    document.getElementById('bluePlayerName').textContent = username || 'Player 2';
+                    USER_ROLES[username] = 'blue';
+                } else if (role === 'spectator') {
+                    USER_ROLES[username] = 'spectator';
+                }
+                
                 socket.emit('join-room', scriptRoomId);
+                
+                // Broadcast username to other players
+                socket.emit('player-joined', { roomId: scriptRoomId, role: role, username: username });
+                
+                // Request current player names (in case this is a refresh/rejoin)
+                socket.emit('request-player-names', scriptRoomId);
+                
+                // Listen for all players info
+                socket.on('all-players-info', (players) => {
+                    if (players.red) {
+                        document.getElementById('redPlayerName').textContent = players.red;
+                        USER_ROLES[players.red] = 'red';
+                    }
+                    if (players.blue) {
+                        document.getElementById('bluePlayerName').textContent = players.blue;
+                        USER_ROLES[players.blue] = 'blue';
+                    }
+                });
+                
                 // Optional role alert
                 if(role==='spectator'){
                     showRoleModal("You are a " + role + ", RoomID: " + roomId);
