@@ -5,6 +5,7 @@ import express from "express";
 import http from "http";
 import { Server } from "socket.io";
 import path from "path";
+import { suggestMove as suggestDrop4 } from './AI/drop4.js';
 import { PrismaClient } from '@prisma/client'
 import { withAccelerate } from '@prisma/extension-accelerate'
 import {v4} from 'uuid'; // to generate unique user ids for cookie tokens
@@ -23,6 +24,19 @@ app.use(express.json()); // Middleware to parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // parse form bodies if needed
 
 let players = [];
+
+// AI suggestion endpoint for Drop4 — delegates to BackEnd/AI/drop4.js
+app.post('/api/drop4/suggest', async (req, res) => {
+  try {
+    const { board, currentPlayer } = req.body;
+    // delegate to AI module (keeps server.js minimal)
+    const column = await suggestDrop4(board, currentPlayer, { depth: 5 });
+    res.json({ column });
+  } catch (error) {
+    console.error('Error in suggestion endpoint:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'FrontEnd/index.html'));
 });
