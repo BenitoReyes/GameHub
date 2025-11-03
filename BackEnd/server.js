@@ -28,9 +28,10 @@ let players = [];
 // AI suggestion endpoint for Drop4 — delegates to BackEnd/AI/drop4.js
 app.post('/api/drop4/suggest', async (req, res) => {
   try {
-    const { board, currentPlayer } = req.body;
+    const { board, currentPlayer, depth } = req.body;
     // delegate to AI module (keeps server.js minimal)
-    const column = await suggestDrop4(board, currentPlayer, { depth: 5 });
+    const useDepth = typeof depth === 'number' ? depth : 5;
+    const column = await suggestDrop4(board, currentPlayer, { depth: useDepth });
     res.json({ column });
   } catch (error) {
     console.error('Error in suggestion endpoint:', error);
