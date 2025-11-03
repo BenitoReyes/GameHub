@@ -6,6 +6,7 @@ const EMPTY = 0;
 const PLAYER1 = 'red';
 const PLAYER2 = 'blue';
 let USERS = {}; // to store userId to username mapping
+let USER_ROLES = {}; // to store username to role mapping (red, blue, spectator)
 let board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
 let currentPlayer;
 let assignedPlayer;
@@ -22,6 +23,7 @@ let chatClient; // will hold the StreamChat client instance
 // Scores (kept in-memory while the page is open)
 
 async function renderScores(redScore, blueScore) {
+  /* COMMENTED OUT - Replaced with profile pictures
   let redEl = document.getElementById('redScore');
   let blueEl = document.getElementById('blueScore');
   if (typeof window.IS_BOARD_PAGE === 'undefined') {
@@ -33,7 +35,7 @@ async function renderScores(redScore, blueScore) {
     redEl.id = 'redScore';
     Object.assign(redEl.style, {
       position: 'fixed',
-      top: '8px',
+      top: '12px',
       left: '12px',
       fontSize: '48px',
       fontWeight: '600',
@@ -50,7 +52,7 @@ async function renderScores(redScore, blueScore) {
     blueEl.id = 'blueScore';
     Object.assign(blueEl.style, {
       position: 'fixed',
-      top: '8px',
+      top: '12px',
       right: '12px',
       fontSize: '48px',
       fontWeight: '600',
@@ -64,10 +66,11 @@ async function renderScores(redScore, blueScore) {
   redEl.textContent = ` ${redScore}`;
   blueEl.textContent = ` ${blueScore}`;
   }
+  */
 }
 
 // initialize scores UI
-renderScores();
+// renderScores(); // COMMENTED OUT
 
 // Result modal helper: shows a message and a "Play Again" button
 function showResultModal(message) {
@@ -514,10 +517,42 @@ async function connectToChat({ roomId, userId, token, role, username }) {
   const username = USERS?.[user.id] || user.name || user.id;
   const chatBox = document.getElementById('chatMessages');
   if (!chatBox) return;
+  
   const messageElem = document.createElement('div');
-  messageElem.textContent = `${username}: ${text}`;
+  messageElem.className = 'chat-message';
+  
+  // Create username span with color
+  const usernameSpan = document.createElement('span');
+  usernameSpan.className = 'chat-username';
+  const userRole = USER_ROLES[username];
+  if (userRole === 'red') {
+    usernameSpan.classList.add('chat-username-red');
+  } else if (userRole === 'blue') {
+    usernameSpan.classList.add('chat-username-blue');
+  }
+  usernameSpan.textContent = username + ': ';
+  
+  // Add message text
+  const textSpan = document.createElement('span');
+  textSpan.textContent = text;
+  
+  messageElem.appendChild(usernameSpan);
+  messageElem.appendChild(textSpan);
   chatBox.appendChild(messageElem);
   chatBox.scrollTop = chatBox.scrollHeight;
+  
+  // Limit messages to 50, fade out and remove oldest
+  const MAX_MESSAGES = 50;
+  const messages = chatBox.querySelectorAll('.chat-message');
+  if (messages.length > MAX_MESSAGES) {
+    const oldestMessage = messages[0];
+    oldestMessage.classList.add('fade-out');
+    setTimeout(() => {
+      if (oldestMessage.parentNode === chatBox) {
+        chatBox.removeChild(oldestMessage);
+      }
+    }, 500); // Match the fadeOut animation duration
+  }
 });
 
 // Enable send button
