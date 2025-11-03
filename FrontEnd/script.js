@@ -23,128 +23,33 @@ let chatClient; // will hold the StreamChat client instance
 // Scores (kept in-memory while the page is open)
 
 async function renderScores(redScore, blueScore) {
-  /* COMMENTED OUT - Replaced with profile pictures
-  let redEl = document.getElementById('redScore');
-  let blueEl = document.getElementById('blueScore');
-  if (typeof window.IS_BOARD_PAGE === 'undefined') {
-  window.IS_BOARD_PAGE = window.location.href.includes('drop4.html');
-  }
-  if(window.IS_BOARD_PAGE){
-  if (!redEl) {
-    redEl = document.createElement('div');
-    redEl.id = 'redScore';
-    Object.assign(redEl.style, {
-      position: 'fixed',
-      top: '12px',
-      left: '12px',
-      fontSize: '48px',
-      fontWeight: '600',
-      color: 'coral',
-      padding: '6px 10px',
-      borderRadius: '6px',
-      zIndex: '1000'
-    });
-    document.body.appendChild(redEl);
-  }
-
-  if (!blueEl) {
-    blueEl = document.createElement('div');
-    blueEl.id = 'blueScore';
-    Object.assign(blueEl.style, {
-      position: 'fixed',
-      top: '12px',
-      right: '12px',
-      fontSize: '48px',
-      fontWeight: '600',
-      color: 'royalblue',
-      padding: '6px 10px',
-      borderRadius: '6px',
-      zIndex: '1000'
-    });
-    document.body.appendChild(blueEl);
-  }
-  redEl.textContent = ` ${redScore}`;
-  blueEl.textContent = ` ${blueScore}`;
-  }
-  */
+  /* COMMENTED OUT - Replaced with profile pictures */
 }
-
-// initialize scores UI
-// renderScores(); // COMMENTED OUT
 
 // Result modal helper: shows a message and a "Play Again" button
 function showResultModal(message) {
-  let modal = document.getElementById('resultModal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'resultModal';
-    modal.className = 'modal-overlay';
-
-    const content = document.createElement('div');
-    content.id = 'resultContent';
-    content.className = 'modal-content';
-
-    const msg = document.createElement('p');
-    msg.id = 'resultMessage';
-    msg.style.marginBottom = '16px';
-    content.appendChild(msg);
-
-    const btn = document.createElement('button');
-    btn.id = 'playAgainBtn';
-    btn.textContent = 'Play Again';
-    Object.assign(btn.style, {
-      padding: '8px 14px',
-      fontSize: '14px',
-      cursor: 'pointer',
-      borderRadius: '6px',
-      border: 'none',
-      background: '#007bff',
-      color: '#fff'
-    });
-
-    btn.addEventListener('click', () => {
-      modal.style.display = 'none';
-      // Tell server and reset locally
-      try { resetGame(); } catch (e) { /* ignore */ }
-      try { socket.emit('reset-game', board, scriptRoomId); } catch (e) { /* ignore */ }
-      try{socket.emit('getScores', scriptRoomId);} catch(e){/*ignore*/}
-    });
-
-    content.appendChild(btn);
-    modal.appendChild(content);
-    document.body.appendChild(modal);
+  // Update turn indicator with the result
+  const turnEl = document.getElementById('turnIndicator');
+  const playAgainBtn = document.getElementById('playAgainBtn');
+  
+  if (turnEl) {
+    turnEl.textContent = message.toUpperCase();
+    turnEl.className = 'gameover';
   }
-
-  // animation CSS moved to styles.css
-
-  const msgEl = document.getElementById('resultMessage');
-  if (msgEl) msgEl.textContent = message;
-  if (msgEl) {
-    const lower = (message || '').toLowerCase();
-    if (lower.includes('red')) {
-      msgEl.style.color = 'red';
-    } else if (lower.includes('blue')) {
-      msgEl.style.color = 'royalblue';
-    } else {
-      msgEl.style.color = '#666';
+  
+  if (playAgainBtn) {
+    playAgainBtn.style.display = 'block';
+  }
+  
+  // Emit game-over event to sync with other players
+  if (socket && scriptRoomId) {
+    // If winner is available, include it. Otherwise, send null.
+    let winner = null;
+    if (message && (message.toLowerCase().includes('red wins') || message.toLowerCase().includes('blue wins'))) {
+      winner = message.toLowerCase().includes('red wins') ? 'red' : 'blue';
     }
+    socket.emit('game-over', { roomId: scriptRoomId, winner });
   }
-
-  // choose animation based on message
-  const contentEl = document.getElementById('resultContent');
-  if (contentEl) {
-    contentEl.classList.remove('bounce', 'fade-in');
-    contentEl.classList.add('modal-anim-content');
-    const lower = (message || '').toLowerCase();
-    if (lower.includes('win') || lower.includes('wins')) {
-      contentEl.classList.add('bounce');
-    } else {
-      // draw or neutral
-      contentEl.classList.add('fade-in');
-    }
-  }
-
-  modal.style.display = 'flex';
 }
 
 // Role modal: informs the user which player they are, using the same blue button style
@@ -254,13 +159,13 @@ function initializeBoard() {
         socket.emit('getScores', scriptRoomId);
         updateTurnIndicator();
         setTimeout(() => {
-          showResultModal(`${currentPlayer.toUpperCase()} wins!`);
+          showResultModal(`${currentPlayer.toUpperCase()} WINS!`);
         }, 100);
       } else if (isDraw()) {
         gameOver = true;
         updateTurnIndicator();
         setTimeout(() => {
-          showResultModal('Draw!');
+          showResultModal('DRAW!');
         }, 100);
       } else {
         if (success) {
@@ -431,8 +336,10 @@ function updateTurnIndicator() {
   el.classList.remove('red', 'blue');
 
   if (gameOver) {
-    el.textContent = 'Game Over';
-    // keep neutral appearance
+    // Don't change text if it's already showing a game over message
+    if (!el.textContent.includes('WINS') && !el.textContent.includes('DRAW')) {
+      el.textContent = 'Game Over';
+    }
     return;
   }
 
@@ -456,7 +363,22 @@ function resetGame() {
     cell.classList.remove('highlight');
   });
   gameOver = false;
-  currentPlayer = assignedPlayer || PLAYER1;
+  currentPlayer = PLAYER1; // Always start with red
+  isMyTurn = assignedPlayer === currentPlayer;
+  
+  // Reset turn indicator
+  const turnEl = document.getElementById('turnIndicator');
+  if (turnEl) {
+    turnEl.textContent = 'Turn: RED';
+    turnEl.className = 'red';
+  }
+  
+  // Hide play again button
+  const playAgainBtn = document.getElementById('playAgainBtn');
+  if (playAgainBtn) {
+    playAgainBtn.style.display = 'none';
+  }
+  
   updateTurnIndicator();
 }
 
@@ -478,18 +400,24 @@ socket.on('opponent-move', (data) => {
     }
     socket.emit('getScores', scriptRoomId);
     setTimeout(() => {
-      showResultModal(`${data.player.toUpperCase()} wins!`);
+      showResultModal(`${data.player.toUpperCase()} WINS!`);
     }, 100);
   } else if (isDraw()) {
     gameOver = true;
     setTimeout(() => {
-      showResultModal('Draw! Board is full.');
+      showResultModal('DRAW!');
     }, 100);
   } else {
     currentPlayer = assignedPlayer;
     isMyTurn = assignedPlayer === currentPlayer;
     updateTurnIndicator();
   }
+});
+
+// Listen for new game requests from other players
+socket.on('new-game-started', () => {
+  resetGame();
+  socket.emit('request-board', scriptRoomId);
 });
 
 

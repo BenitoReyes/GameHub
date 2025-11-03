@@ -1,254 +1,802 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Board Visual</title>
-        <link rel="stylesheet" href="styles.css">
-    </head>
-    <body class="game-page">
-        <!-- Red Player Profile (Top Left) -->
-        <div class="profile-container profile-left">
-            <div class="profile-avatar profile-red">
-                <img src="https://images.unsplash.com/photo-1557110437-0bcd0a636d62?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxibGFuayUyMHByb2ZpbGUlMjBhdmF0YXJ8ZW58MXx8fHwxNzYxMTg3ODUxfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral" alt="Red Player">
-            </div>
-            <span class="profile-username" id="redPlayerName">Player 1</span>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drop 4 - Game</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background: linear-gradient(180deg, #1a1a2e 0%, #0f3460 100%);
+            color: #e6eef8;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+            padding-bottom: 320px;
+        }
+
+        /* Animated stars background */
+        body::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background-image: 
+                radial-gradient(2px 2px at 20% 30%, white, transparent),
+                radial-gradient(2px 2px at 60% 70%, white, transparent),
+                radial-gradient(1px 1px at 50% 50%, white, transparent),
+                radial-gradient(1px 1px at 80% 10%, white, transparent),
+                radial-gradient(2px 2px at 90% 60%, white, transparent);
+            background-size: 200px 200px;
+            animation: stars 25s linear infinite;
+            opacity: 0.5;
+            z-index: 0;
+        }
+
+        @keyframes stars {
+            from { transform: translateY(0) translateX(0); }
+            to { transform: translateY(-200px) translateX(-100px); }
+        }
+
+        /* Back Button */
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000, 0 4px 0 #000;
+            padding: 10px 16px;
+            font-size: 10px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            text-decoration: none;
+            transition: all 0.1s;
+            z-index: 200;
+        }
+
+        .back-btn:hover {
+            background: linear-gradient(180deg, #f87171 0%, #ef4444 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 0 0 4px #000, 0 6px 0 #000;
+        }
+
+        /* Player Profiles */
+        .profile-container {
+            position: fixed;
+            top: 100px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 50;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 12px 16px;
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000;
+        }
+
+        .profile-left {
+            left: 20px;
+            flex-direction: row;
+        }
+
+        .profile-right {
+            right: 20px;
+            flex-direction: row-reverse;
+        }
+
+        .profile-avatar {
+            width: 48px;
+            height: 48px;
+            border: 3px solid;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .profile-red .profile-avatar {
+            border-color: #ef4444;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+        }
+
+        .profile-blue .profile-avatar {
+            border-color: #3b82f6;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+        }
+
+        .profile-avatar img {
+            display: none;
+        }
+
+        .profile-username {
+            font-size: 10px;
+            color: #fff;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        /* Game Wrapper */
+        .game-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            position: relative;
+            z-index: 1;
+            padding: 200px 20px 20px 20px;
+            min-height: calc(100vh - 320px);
+        }
+
+        /* Suggestion Button */
+        .suggestion-controls {
+            margin-bottom: 10px;
+        }
+
+        .suggestion-button {
+            background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%);
+            color: #000;
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000, 0 4px 0 #000;
+            padding: 12px 20px;
+            font-size: 10px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            transition: all 0.1s;
+            text-transform: uppercase;
+        }
+
+        .suggestion-button:hover {
+            background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 0 0 4px #000, 0 6px 0 #000;
+        }
+
+        .suggestion-button:active {
+            transform: translateY(2px);
+            box-shadow: 0 0 0 4px #000, 0 2px 0 #000;
+        }
+
+        /* Board Container */
+        .board-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .board-wrapper {
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            border: 6px solid #fff;
+            box-shadow: 0 0 0 6px #000, 0 8px 0 #000;
+            padding: 20px;
+        }
+
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(7, 60px);
+            grid-template-rows: repeat(6, 60px);
+            gap: 8px;
+            background: #000;
+            padding: 12px;
+            border: 4px solid #fff;
+        }
+
+        .cell {
+            width: 60px;
+            height: 60px;
+            background: #1a1a2e;
+            border: 3px solid #2d3748;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.1s;
+            position: relative;
+            image-rendering: pixelated;
+        }
+
+        .cell:hover {
+            background: #2d3748;
+            border-color: #4a5568;
+            transform: scale(1.05);
+        }
+
+        .cell.column-highlight {
+            animation: highlightPulse 1s infinite;
+        }
+
+        @keyframes highlightPulse {
+            0%, 100% { 
+                background: #fbbf24;
+                border-color: #fcd34d;
+            }
+            50% { 
+                background: #f59e0b;
+                border-color: #fbbf24;
+            }
+        }
+
+        .piece {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            image-rendering: pixelated;
+            animation: dropIn 0.3s ease-out;
+        }
+
+        @keyframes dropIn {
+            from {
+                transform: translateY(-400px) scale(0.8);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+
+        .piece img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            image-rendering: pixelated;
+        }
+
+        /* Turn Indicator */
+        #turnIndicator {
+            background: #000;
+            color: #fff;
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000;
+            padding: 12px 24px;
+            font-size: 12px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            min-width: 200px;
+        }
+
+        #turnIndicator.red {
+            border-color: #ef4444;
+            color: #ef4444;
+            animation: pulse 1s infinite;
+        }
+
+        #turnIndicator.blue {
+            border-color: #3b82f6;
+            color: #3b82f6;
+            animation: pulse 1s infinite;
+        }
+
+        #turnIndicator.gameover {
+            border-color: #fbbf24;
+            color: #fbbf24;
+            font-size: 14px;
+            animation: none;
+        }
+
+        /* Play Again Button */
+        #playAgainBtn {
+            background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%);
+            color: #000;
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000, 0 4px 0 #000;
+            padding: 12px 24px;
+            font-size: 10px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            transition: all 0.1s;
+            text-transform: uppercase;
+            display: none;
+            margin-bottom: 15px;
+        }
+
+        #playAgainBtn:hover:not(:disabled) {
+            background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 0 0 4px #000, 0 6px 0 #000;
+        }
+
+        #playAgainBtn:active:not(:disabled) {
+            transform: translateY(2px);
+            box-shadow: 0 0 0 4px #000, 0 2px 0 #000;
+        }
+
+        #playAgainBtn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Chat Container - Fixed at Bottom */
+        .chat-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            border-top: 6px solid #fff;
+            box-shadow: 0 -8px 0 #000, 0 0 0 6px #000;
+            padding: 15px 20px;
+            display: flex;
+            flex-direction: column;
+            height: 300px;
+            z-index: 100;
+        }
+
+        .chat-container h2 {
+            font-size: 12px;
+            color: #fbbf24;
+            text-align: center;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        .chat-box {
+            flex: 1;
+            background: #000;
+            border: 3px solid #fff;
+            padding: 10px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            margin-bottom: 10px;
+            font-size: 8px;
+            line-height: 1.6;
+            max-height: 180px;
+        }
+
+        .chat-message {
+            margin-bottom: 8px;
+            word-wrap: break-word;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .chat-username {
+            font-weight: bold;
+        }
+
+        .chat-username-red {
+            color: #ef4444;
+        }
+
+        .chat-username-blue {
+            color: #3b82f6;
+        }
+
+        .chat-username-spectator {
+            color: #a0aec0;
+        }
+
+        .chat-input-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        #chatInput {
+            flex: 1;
+            background: #000;
+            color: #fff;
+            border: 3px solid #fff;
+            padding: 10px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 8px;
+        }
+
+        #chatInput:focus {
+            outline: none;
+            border-color: #fbbf24;
+        }
+
+        #sendBtn {
+            background: linear-gradient(180deg, #4ecdc4 0%, #44a08d 100%);
+            color: #fff;
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000, 0 4px 0 #000;
+            padding: 10px 20px;
+            font-size: 8px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            transition: all 0.1s;
+            white-space: nowrap;
+        }
+
+        #sendBtn:hover {
+            background: linear-gradient(180deg, #5eddd4 0%, #54b09d 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 0 0 4px #000, 0 6px 0 #000;
+        }
+
+        #sendBtn:active {
+            transform: translateY(2px);
+            box-shadow: 0 0 0 4px #000, 0 2px 0 #000;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            body {
+                padding-bottom: 280px;
+            }
+
+            .profile-container {
+                padding: 8px 12px;
+            }
+
+            .game-wrapper {
+                padding-top: 180px;
+            }
+
+            #game-board {
+                grid-template-columns: repeat(7, 45px);
+                grid-template-rows: repeat(6, 45px);
+                gap: 6px;
+            }
+
+            .cell {
+                width: 45px;
+                height: 45px;
+            }
+
+            .piece {
+                width: 38px;
+                height: 38px;
+            }
+
+            .chat-container {
+                height: 260px;
+                padding: 12px 15px;
+            }
+
+            .chat-box {
+                max-height: 140px;
+            }
+
+            #turnIndicator {
+                font-size: 10px;
+                padding: 10px 18px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #game-board {
+                grid-template-columns: repeat(7, 38px);
+                grid-template-rows: repeat(6, 38px);
+                gap: 4px;
+            }
+
+            .cell {
+                width: 38px;
+                height: 38px;
+            }
+
+            .piece {
+                width: 32px;
+                height: 32px;
+            }
+        }
+    </style>
+</head>
+<body class="game-page">
+    <a href="drop4Menu.html" class="back-btn">◄ BACK</a>
+    
+    <!-- Red Player Profile (Top Left) -->
+    <div class="profile-container profile-left profile-red">
+        <div class="profile-avatar">
+            👤
+        </div>
+        <span class="profile-username" id="redPlayerName">Player 1</span>
+    </div>
+    
+    <!-- Blue Player Profile (Top Right) -->
+    <div class="profile-container profile-right profile-blue">
+        <div class="profile-avatar">
+            👤
+        </div>
+        <span class="profile-username" id="bluePlayerName">Player 2</span>
+    </div>
+
+    <div class="game-wrapper">
+        <div class="suggestion-controls">
+            <button id="suggestionBtn" class="suggestion-button">Get Hint</button>
         </div>
         
-        <!-- Blue Player Profile (Top Right) -->
-        <div class="profile-container profile-right">
-            <div class="profile-avatar profile-blue">
-                <img src="https://images.unsplash.com/photo-1557110437-0bcd0a636d62?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxibGFuayUyMHByb2ZpbGUlMjBhdmF0YXJ8ZW58MXx8fHwxNzYxMTg3ODUxfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral" alt="Blue Player">
-            </div>
-            <span class="profile-username" id="bluePlayerName">Player 2</span>
-        </div>
-
-        <div class="game-wrapper">
-            <div class="suggestion-controls">
-                <button id="suggestionBtn" class="suggestion-button">Get Move Suggestion</button>
-            </div>
-            <div class="board-container">
+        <div class="board-container">
+            <div class="board-wrapper">
                 <div id="game-board">
-                <!-- 6 rows × 7 columns = 42 cells -->
-                <div class="cell" data-row="0" data-col="0"></div>
-                <div class="cell" data-row="0" data-col="1"></div>
-                <div class="cell" data-row="0" data-col="2"></div>
-                <div class="cell" data-row="0" data-col="3"></div>
-                <div class="cell" data-row="0" data-col="4"></div>
-                <div class="cell" data-row="0" data-col="5"></div>
-                <div class="cell" data-row="0" data-col="6"></div>
-                <div class="cell" data-row="1" data-col="0"></div>
-                <div class="cell" data-row="1" data-col="1"></div>
-                <div class="cell" data-row="1" data-col="2"></div>
-                <div class="cell" data-row="1" data-col="3"></div>
-                <div class="cell" data-row="1" data-col="4"></div>
-                <div class="cell" data-row="1" data-col="5"></div>
-                <div class="cell" data-row="1" data-col="6"></div>
-                <div class="cell" data-row="2" data-col="0"></div>
-                <div class="cell" data-row="2" data-col="1"></div>
-                <div class="cell" data-row="2" data-col="2"></div>
-                <div class="cell" data-row="2" data-col="3"></div>
-                <div class="cell" data-row="2" data-col="4"></div>
-                <div class="cell" data-row="2" data-col="5"></div>
-                <div class="cell" data-row="2" data-col="6"></div>
-                <div class="cell" data-row="3" data-col="0"></div>
-                <div class="cell" data-row="3" data-col="1"></div>
-                <div class="cell" data-row="3" data-col="2"></div>
-                <div class="cell" data-row="3" data-col="3"></div>
-                <div class="cell" data-row="3" data-col="4"></div>
-                <div class="cell" data-row="3" data-col="5"></div>
-                <div class="cell" data-row="3" data-col="6"></div>
-                <div class="cell" data-row="4" data-col="0"></div>
-                <div class="cell" data-row="4" data-col="1"></div>
-                <div class="cell" data-row="4" data-col="2"></div>
-                <div class="cell" data-row="4" data-col="3"></div>
-                <div class="cell" data-row="4" data-col="4"></div>
-                <div class="cell" data-row="4" data-col="5"></div>
-                <div class="cell" data-row="4" data-col="6"></div>
-                <div class="cell" data-row="5" data-col="0"></div>
-                <div class="cell" data-row="5" data-col="1"></div>
-                <div class="cell" data-row="5" data-col="2"></div>
-                <div class="cell" data-row="5" data-col="3"></div>
-                <div class="cell" data-row="5" data-col="4"></div>
-                <div class="cell" data-row="5" data-col="5"></div>
-                <div class="cell" data-row="5" data-col="6"></div>
+                    <!-- 6 rows × 7 columns = 42 cells -->
+                    <div class="cell" data-row="0" data-col="0"></div>
+                    <div class="cell" data-row="0" data-col="1"></div>
+                    <div class="cell" data-row="0" data-col="2"></div>
+                    <div class="cell" data-row="0" data-col="3"></div>
+                    <div class="cell" data-row="0" data-col="4"></div>
+                    <div class="cell" data-row="0" data-col="5"></div>
+                    <div class="cell" data-row="0" data-col="6"></div>
+                    <div class="cell" data-row="1" data-col="0"></div>
+                    <div class="cell" data-row="1" data-col="1"></div>
+                    <div class="cell" data-row="1" data-col="2"></div>
+                    <div class="cell" data-row="1" data-col="3"></div>
+                    <div class="cell" data-row="1" data-col="4"></div>
+                    <div class="cell" data-row="1" data-col="5"></div>
+                    <div class="cell" data-row="1" data-col="6"></div>
+                    <div class="cell" data-row="2" data-col="0"></div>
+                    <div class="cell" data-row="2" data-col="1"></div>
+                    <div class="cell" data-row="2" data-col="2"></div>
+                    <div class="cell" data-row="2" data-col="3"></div>
+                    <div class="cell" data-row="2" data-col="4"></div>
+                    <div class="cell" data-row="2" data-col="5"></div>
+                    <div class="cell" data-row="2" data-col="6"></div>
+                    <div class="cell" data-row="3" data-col="0"></div>
+                    <div class="cell" data-row="3" data-col="1"></div>
+                    <div class="cell" data-row="3" data-col="2"></div>
+                    <div class="cell" data-row="3" data-col="3"></div>
+                    <div class="cell" data-row="3" data-col="4"></div>
+                    <div class="cell" data-row="3" data-col="5"></div>
+                    <div class="cell" data-row="3" data-col="6"></div>
+                    <div class="cell" data-row="4" data-col="0"></div>
+                    <div class="cell" data-row="4" data-col="1"></div>
+                    <div class="cell" data-row="4" data-col="2"></div>
+                    <div class="cell" data-row="4" data-col="3"></div>
+                    <div class="cell" data-row="4" data-col="4"></div>
+                    <div class="cell" data-row="4" data-col="5"></div>
+                    <div class="cell" data-row="4" data-col="6"></div>
+                    <div class="cell" data-row="5" data-col="0"></div>
+                    <div class="cell" data-row="5" data-col="1"></div>
+                    <div class="cell" data-row="5" data-col="2"></div>
+                    <div class="cell" data-row="5" data-col="3"></div>
+                    <div class="cell" data-row="5" data-col="4"></div>
+                    <div class="cell" data-row="5" data-col="5"></div>
+                    <div class="cell" data-row="5" data-col="6"></div>
+                </div>
             </div>
+            <button id="playAgainBtn">Play Again</button>
             <div id="turnIndicator">Turn: RED</div>
         </div>
-        <div class="chat-container">
-            <h2>Live Chat</h2>
-            <div id="chatMessages" class="chat-box"></div>
-            <input id="chatInput" type="text" placeholder="Type a message..." />
-            <button id="sendBtn">Send</button>
+    </div>
+
+    <div class="chat-container">
+        <h2>★ LIVE CHAT ★</h2>
+        <div id="chatMessages" class="chat-box"></div>
+        <div class="chat-input-row">
+            <input id="chatInput" type="text" placeholder="Type message..." />
+            <button id="sendBtn">SEND</button>
         </div>
     </div>
-        <script src="stream-chat.bundle.js"></script>
-        <script src="/socket.io/socket.io.js"></script>
-        <script src="script.js"></script>
-        <script>
-            window.addEventListener('DOMContentLoaded', async () => {
-                window.IS_BOARD_PAGE = true;
-                renderScores();
-                const urlParams = new URLSearchParams(window.location.search);
-                const checkRoomId = sessionStorage.getItem('roomId');
-                if(!checkRoomId){
-                    sessionStorage.setItem('roomId', urlParams.get('roomId') || '');
-                }
-                const roomId = urlParams.get('roomId') || sessionStorage.getItem('roomId');
-                const userId = sessionStorage.getItem('userId');
-                const token = sessionStorage.getItem('token');
-                const role = sessionStorage.getItem('role');
-                const username = sessionStorage.getItem('username');
-                if (!roomId || !userId || !token || !role) {
-                alert("Missing session data. Please rejoin the room.");
+
+    <script src="stream-chat.bundle.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="script.js"></script>
+<script>
+    window.addEventListener('DOMContentLoaded', async () => {
+        window.IS_BOARD_PAGE = true;
+        renderScores();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const checkRoomId = sessionStorage.getItem('roomId');
+        if (!checkRoomId) {
+            sessionStorage.setItem('roomId', urlParams.get('roomId') || '');
+        }
+
+        const roomId = urlParams.get('roomId') || sessionStorage.getItem('roomId');
+        const userId = sessionStorage.getItem('userId');
+        const token = sessionStorage.getItem('token');
+        const role = sessionStorage.getItem('role');
+        const username = sessionStorage.getItem('username');
+
+        if (!roomId || !userId || !token || !role) {
+            alert("Missing session data. Please rejoin the room.");
+            return;
+        }
+
+        try {
+            await connectToChat({ roomId, userId, token, role, username });
+        } catch (err) {
+            console.error("Error connecting to chat:", err);
+        }
+
+        assignedPlayer = role;
+        currentPlayer = 'red';
+        isMyTurn = role === currentPlayer;
+        scriptRoomId = roomId;
+
+        if (role === 'red') {
+            document.getElementById('redPlayerName').textContent = username || 'Player 1';
+            USER_ROLES[username] = 'red';
+        } else if (role === 'blue') {
+            document.getElementById('bluePlayerName').textContent = username || 'Player 2';
+            USER_ROLES[username] = 'blue';
+        } else if (role === 'spectator') {
+            USER_ROLES[username] = 'spectator';
+        }
+
+        socket.emit('join-room', scriptRoomId);
+        socket.emit('player-joined', { roomId: scriptRoomId, role: role, username: username });
+        socket.emit('request-player-names', scriptRoomId);
+
+        socket.on('all-players-info', (players) => {
+            if (players.red) {
+                document.getElementById('redPlayerName').textContent = players.red;
+                USER_ROLES[players.red] = 'red';
+            }
+            if (players.blue) {
+                document.getElementById('bluePlayerName').textContent = players.blue;
+                USER_ROLES[players.blue] = 'blue';
+            }
+        });
+
+        if (role === 'spectator') {
+            showRoleModal("You are a " + role + ", RoomID: " + roomId);
+        } else {
+            showRoleModal("You are " + role + ", RoomID: " + roomId);
+        }
+
+        socket.on('sync-board', (boardData) => {
+            board = boardData;
+            updateReloadedUI(board);
+            updateTurnIndicator();
+        });
+
+        socket.emit('request-board', scriptRoomId);
+        socket.emit('getScores', scriptRoomId);
+
+        socket.on('scoreUpdate', ({ redScore: rScore, blueScore: bScore }) => {
+            renderScores(rScore, bScore);
+        });
+
+        /* ==========================
+           ✅ PLAY AGAIN VOTING LOGIC
+        =========================== */
+
+        const playAgainBtn = document.getElementById('playAgainBtn');
+        let hasClickedPlayAgain = false;
+
+        function resetPlayAgainButton() {
+            playAgainBtn.style.display = 'block';
+            playAgainBtn.disabled = false;
+            playAgainBtn.textContent = 'Play Again';
+            hasClickedPlayAgain = false;
+        }
+
+        playAgainBtn.addEventListener('click', () => {
+            // First check if we have all required data and haven't already clicked
+            if (!scriptRoomId || !userId || hasClickedPlayAgain) {
+                console.warn('Missing data or already clicked:', { scriptRoomId, userId, hasClickedPlayAgain });
                 return;
-                }
-                try {
-                await connectToChat({ roomId, userId, token, role, username });
-                } catch (err) {
-                console.error("Error connecting to chat:", err);
-                }
-                assignedPlayer = role;
-                currentPlayer = 'red'; // red always starts
-                isMyTurn = role === currentPlayer;
-                scriptRoomId = roomId;
-                
-                // Update player names based on role
-                if (role === 'red') {
-                    document.getElementById('redPlayerName').textContent = username || 'Player 1';
-                    USER_ROLES[username] = 'red';
-                } else if (role === 'blue') {
-                    document.getElementById('bluePlayerName').textContent = username || 'Player 2';
-                    USER_ROLES[username] = 'blue';
-                } else if (role === 'spectator') {
-                    USER_ROLES[username] = 'spectator';
-                }
-                
-                socket.emit('join-room', scriptRoomId);
-                
-                // Broadcast username to other players
-                socket.emit('player-joined', { roomId: scriptRoomId, role: role, username: username });
-                
-                // Request current player names (in case this is a refresh/rejoin)
-                socket.emit('request-player-names', scriptRoomId);
-                
-                // Listen for all players info
-                socket.on('all-players-info', (players) => {
-                    if (players.red) {
-                        document.getElementById('redPlayerName').textContent = players.red;
-                        USER_ROLES[players.red] = 'red';
-                    }
-                    if (players.blue) {
-                        document.getElementById('bluePlayerName').textContent = players.blue;
-                        USER_ROLES[players.blue] = 'blue';
-                    }
+            }
+
+            hasClickedPlayAgain = true;
+            playAgainBtn.disabled = true;
+            playAgainBtn.textContent = 'Waiting for other player... (1/2)';
+            console.log('Requesting new game with:', { roomId: scriptRoomId, userId });
+            socket.emit('request-new-game', { roomId: scriptRoomId, userId });
+        });
+
+        socket.on('player-ready', ({ count }) => {
+            if (count < 2) {
+                playAgainBtn.textContent = `Waiting for other player... (${count}/2)`;
+            } else if (count === 2) {
+                playAgainBtn.textContent = 'Both players ready! Starting new game...';
+            }
+        });
+
+        socket.on('new-game-started', () => {
+            resetPlayAgainButton();
+            playAgainBtn.style.display = 'none';
+            // Full reset of client state
+            if (typeof resetGame === 'function') resetGame();
+            board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
+            currentPlayer = 'red';
+            isMyTurn = assignedPlayer === 'red';
+            updateTurnIndicator();
+            initializeBoard(); // Ensure board UI is fully reset
+            socket.emit('request-board', scriptRoomId);
+        });
+
+        socket.on('game-over', ({ winner, roomId }) => {
+            // Optionally use winner and roomId for UI updates
+            resetPlayAgainButton();
+            // If you need to update scriptRoomId, do it here
+        });
+
+        /* ==========================
+           💡 MOVE SUGGESTION BUTTON
+        =========================== */
+        const suggestionBtn = document.getElementById('suggestionBtn');
+        let previousHighlight = null;
+
+        function removeHighlight() {
+            if (previousHighlight !== null) {
+                const cells = document.querySelectorAll(`.cell[data-col="${previousHighlight}"]`);
+                cells.forEach(cell => cell.classList.remove('column-highlight'));
+                previousHighlight = null;
+            }
+        }
+
+        function highlightColumn(column) {
+            removeHighlight();
+            const cells = document.querySelectorAll(`.cell[data-col="${column}"]`);
+            cells.forEach(cell => cell.classList.add('column-highlight'));
+            previousHighlight = column;
+            setTimeout(removeHighlight, 3000);
+        }
+
+        async function getSuggestion() {
+            if (!isMyTurn) {
+                alert("Please wait for your turn!");
+                return;
+            }
+
+            try {
+                const boardState = (typeof board !== 'undefined')
+                    ? board.map(row => row.map(cell => cell === 0 ? null : cell))
+                    : Array.from({ length: 6 }, () => Array(7).fill(null));
+
+                const playerToSend = typeof currentPlayer !== 'undefined' ? currentPlayer : 'red';
+
+                const response = await fetch('/api/drop4/suggest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        board: boardState,
+                        currentPlayer: playerToSend
+                    }),
                 });
-                
-                // Optional role alert
-                if(role==='spectator'){
-                    showRoleModal("You are a " + role + ", RoomID: " + roomId);
+
+                if (!response.ok) throw new Error('Failed to get suggestion');
+
+                const data = await response.json();
+                if (data.column >= 0) {
+                    highlightColumn(data.column);
                 } else {
-                    showRoleModal("You are " + role + ", RoomID: " + roomId);
+                    alert('No valid moves available');
                 }
-                socket.on('sync-board', (boardData) => {
-                    board = boardData;
-                    updateReloadedUI(board); // ← this should redraw the board
-                    updateTurnIndicator();
-                });
-                socket.emit('request-board', scriptRoomId);
-                socket.emit('getScores', scriptRoomId);
-                socket.on('scoreUpdate', ({ redScore: rScore, blueScore: bScore }) => {
-                    renderScores(rScore, bScore);
-                });
+            } catch (error) {
+                console.error('Error getting suggestion:', error);
+                alert('Failed to get move suggestion. Please try again.');
+            }
+        }
 
-                // Add suggestion button functionality
-                const suggestionBtn = document.getElementById('suggestionBtn');
-                let previousHighlight = null;
+        suggestionBtn.addEventListener('click', getSuggestion);
 
-                function removeHighlight() {
-                    if (previousHighlight !== null) {
-                        const cells = document.querySelectorAll(`.cell[data-col="${previousHighlight}"]`);
-                        cells.forEach(cell => cell.classList.remove('column-highlight'));
-                        previousHighlight = null;
-                    }
-                }
+        function updateSuggestionButtonVisibility() {
+            suggestionBtn.style.display = role === 'spectator' ? 'none' : 'block';
+        }
 
-                function highlightColumn(column) {
-                    removeHighlight();
-                    const cells = document.querySelectorAll(`.cell[data-col="${column}"]`);
-                    cells.forEach(cell => cell.classList.add('column-highlight'));
-                    previousHighlight = column;
+        updateSuggestionButtonVisibility();
+        initializeBoard();
+    });
 
-                    // Remove highlight after 3 seconds
-                    setTimeout(removeHighlight, 3000);
-                }
+    window.addEventListener('beforeunload', () => {
+        const roomId = sessionStorage.getItem('roomId');
+        if (roomId) {
+            socket.emit('leave-game', roomId);
+        }
+    });
+</script>
 
-                async function getSuggestion() {
-                    // Check if it's the user's turn
-                    if (!isMyTurn) {
-                        alert("Please wait for your turn!");
-                        return;
-                    }
-
-                    try {
-                        // Use the game's `board` variable (from script.js). Convert empty (0) to null
-                        const boardState = (typeof board !== 'undefined')
-                            ? board.map(row => row.map(cell => cell === 0 ? null : cell))
-                            : Array.from({ length: 6 }, () => Array(7).fill(null));
-
-                        // currentPlayer is maintained by the main game script; use it if available
-                        const playerToSend = typeof currentPlayer !== 'undefined' ? currentPlayer : 'red';
-
-                        // Make the API call
-                        const response = await fetch('/api/drop4/suggest', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                board: boardState,
-                                currentPlayer: playerToSend
-                            }),
-                        });
-
-                        if (!response.ok) {
-                            throw new Error('Failed to get suggestion');
-                        }
-
-                        const data = await response.json();
-                        if (data.column >= 0) {
-                            highlightColumn(data.column);
-                        } else {
-                            alert('No valid moves available');
-                        }
-                    } catch (error) {
-                        console.error('Error getting suggestion:', error);
-                        alert('Failed to get move suggestion. Please try again.');
-                    }
-                }
-
-                // Add click event listener to suggestion button
-                suggestionBtn.addEventListener('click', getSuggestion);
-
-                // Update suggestion button visibility based on role
-                function updateSuggestionButtonVisibility() {
-                    if (role === 'spectator') {
-                        suggestionBtn.style.display = 'none';
-                    } else {
-                        suggestionBtn.style.display = 'block';
-                    }
-                }
-                updateSuggestionButtonVisibility();
-
-                // Now that DOM is ready and role is assigned, initialize board
-                initializeBoard();
-            });
-            window.addEventListener('beforeunload', () => {
-                const roomId = sessionStorage.getItem('roomId');
-                if(roomId){
-                    socket.emit('leave-game', roomId);
-                }
-            });
-        </script>
-    </body>
+</body>
 </html>

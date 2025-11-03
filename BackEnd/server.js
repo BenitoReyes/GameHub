@@ -365,6 +365,79 @@ io.on('connection', async (socket) => {
         }
       }, 5000); // 5 second delay
     });
+// Track players ready to play again per room
+// ---------------------------
+// GAME OVER + PLAY AGAIN LOGIC
+// ---------------------------
+const playAgainRequests = new Map();
+
+socket.on('game-over', async ({ roomId, winner }) => {
+  if (!roomId) {
+    console.warn('⚠️ game-over event missing roomId');
+    return;
+  }
+
+  // Broadcast to all in the room, include roomId
+  io.to(roomId).emit('game-over', { winner, roomId });
+  console.log(`Game over in room ${roomId}. Winner: ${winner}`);
+});
+
+socket.on('request-new-game', async (data) => {
+  if (!data || !data.roomId || !data.userId) {
+    console.warn('request-new-game missing required data:', data);
+    return;
+  }
+
+  const { roomId, userId } = data;
+
+  // Ensure socket actually joined that room
+  socket.join(roomId);
+
+  // Initialize tracking set for room
+  if (!playAgainRequests.has(roomId)) {
+    playAgainRequests.set(roomId, new Set());
+  }
+
+  const readySet = playAgainRequests.get(roomId);
+  readySet.add(userId);
+
+  // Broadcast number of ready players
+  io.to(roomId).emit('player-ready', { count: readySet.size });
+
+  // --- Debug logging ---
+  console.log(`Player ${userId} ready in room ${roomId}. Count: ${readySet.size}`);
+
+  // Start new game when both ready
+  if (readySet.size >= 2) {
+    try {
+      console.log(`✅ Both players ready in room ${roomId}. Starting new game...`);
+
+      const emptyBoard = Array(6).fill().map(() => Array(7).fill(0));
+
+      await prisma.room.update({
+        where: { id: roomId },
+        data: { board: emptyBoard },
+      });
+
+      playAgainRequests.delete(roomId);
+      io.to(roomId).emit('new-game-started');
+
+      console.log(`🎮 New game started in room ${roomId}`);
+    } catch (err) {
+      console.error(`❌ Error resetting board for room ${roomId}:`, err);
+    }
+  }
+});
+
+// Optional cleanup if player disconnects
+socket.on('disconnect', () => {
+  for (const [roomId, readySet] of playAgainRequests.entries()) {
+    if (readySet.has(socket.id)) {
+      readySet.delete(socket.id);
+      io.to(roomId).emit('player-ready', { count: readySet.size });
+    }
+  }
+});
 
     socket.on('disconnect', async () => {
       console.log(`Socket ${socket.id} disconnected`);
