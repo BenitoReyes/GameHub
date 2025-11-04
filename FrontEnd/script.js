@@ -33,14 +33,16 @@ async function renderScores(redScore, blueScore) {
     redEl.id = 'redScore';
     Object.assign(redEl.style, {
       position: 'fixed',
-      top: '8px',
+      top: '120px',
       left: '12px',
       fontSize: '48px',
       fontWeight: '600',
       color: 'coral',
       padding: '6px 10px',
       borderRadius: '6px',
-      zIndex: '1000'
+      zIndex: '1000',
+      textShadow: '2px 2px 0 #000',
+      fontFamily: '"Press Start 2P", cursive'
     });
     document.body.appendChild(redEl);
   }
@@ -50,14 +52,16 @@ async function renderScores(redScore, blueScore) {
     blueEl.id = 'blueScore';
     Object.assign(blueEl.style, {
       position: 'fixed',
-      top: '8px',
+      top: '120px',
       right: '12px',
       fontSize: '48px',
       fontWeight: '600',
       color: 'royalblue',
       padding: '6px 10px',
       borderRadius: '6px',
-      zIndex: '1000'
+      zIndex: '1000',
+      textShadow: '2px 2px 0 #000',
+      fontFamily: '"Press Start 2P", cursive'
     });
     document.body.appendChild(blueEl);
   }

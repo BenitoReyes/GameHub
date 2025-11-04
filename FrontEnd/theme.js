@@ -7,7 +7,7 @@
     // Apply theme immediately to prevent flash
     function applyTheme() {
         const isDarkMode = localStorage.getItem('gamehub_theme') !== null ? 
-            JSON.parse(localStorage.getItem('gamehub_theme')) : true;
+            JSON.parse(localStorage.getItem('gamehub_theme')) : false;
         document.body.className = isDarkMode ? '' : 'light';
         console.log('Theme applied:', isDarkMode ? 'Dark' : 'Light'); // Debug log
         return isDarkMode;
@@ -28,7 +28,7 @@
         // Get current theme setting
         getCurrentTheme: function() {
             return localStorage.getItem('gamehub_theme') !== null ? 
-                JSON.parse(localStorage.getItem('gamehub_theme')) : true;
+                JSON.parse(localStorage.getItem('gamehub_theme')) : false;
         },
         
         // Set theme and apply immediately
