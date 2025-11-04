@@ -667,7 +667,7 @@
             renderScores(rScore, bScore);
         });
 
-        /* ==========================
+         /* ==========================
            ✅ PLAY AGAIN VOTING LOGIC
         =========================== */
 
@@ -682,39 +682,48 @@
         }
 
         playAgainBtn.addEventListener('click', () => {
-            // First check if we have all required data and haven't already clicked
-            if (!scriptRoomId || !userId || hasClickedPlayAgain) {
-                console.warn('Missing data or already clicked:', { scriptRoomId, userId, hasClickedPlayAgain });
-                return;
-            }
+            if (!scriptRoomId || !userId || hasClickedPlayAgain) return;
 
             hasClickedPlayAgain = true;
             playAgainBtn.disabled = true;
             playAgainBtn.textContent = 'Waiting for other player... (1/2)';
-            console.log('Requesting new game with:', { roomId: scriptRoomId, userId });
             socket.emit('request-new-game', { roomId: scriptRoomId, userId });
         });
 
-        socket.on('player-ready', ({ count }) => {
-            if (count < 2) {
-                playAgainBtn.textContent = `Waiting for other player... (${count}/2)`;
-            } else if (count === 2) {
+        socket.on('player-ready', ({ count, total }) => {
+            if (count < total) {
+                playAgainBtn.textContent = `Waiting for other player... (${count}/${total})`;
+            } else if (count === total) {
                 playAgainBtn.textContent = 'Both players ready! Starting new game...';
             }
         });
 
-        socket.on('new-game-started', () => {
+        socket.on('new-game-started', ({ roomId }) => {
+            console.log("🎮 New game signal received from server");
+
+            // Reset Play Again button
             resetPlayAgainButton();
             playAgainBtn.style.display = 'none';
-            // Full reset of client state
+
+            // Reset board and game state
             if (typeof resetGame === 'function') resetGame();
+
             board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
             currentPlayer = 'red';
             isMyTurn = assignedPlayer === 'red';
+            gameOver = false;
+
             updateTurnIndicator();
-            initializeBoard(); // Ensure board UI is fully reset
+            initializeBoard();
+
+            // Make sure roomId is in sync
+            scriptRoomId = roomId;
+
+            // Sync with server in case we missed any moves
             socket.emit('request-board', scriptRoomId);
         });
+
+
 
         socket.on('game-over', ({ winner, roomId }) => {
             // Optionally use winner and roomId for UI updates
@@ -795,7 +804,7 @@
         if (roomId) {
             socket.emit('leave-game', roomId);
         }
-    });
+        });
 </script>
 
 </body>

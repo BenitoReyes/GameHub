@@ -365,11 +365,11 @@ io.on('connection', async (socket) => {
         }
       }, 5000); // 5 second delay
     });
-// Track players ready to play again per room
-// ---------------------------
+// --------------------------- 
 // GAME OVER + PLAY AGAIN LOGIC
 // ---------------------------
-const playAgainRequests = new Map();
+const playAgainRequests = new Map(); // roomId -> Set of userIds
+const playAgainTimeouts = new Map(); // roomId -> timeout ID
 
 socket.on('game-over', async ({ roomId, winner }) => {
   if (!roomId) {
@@ -377,7 +377,6 @@ socket.on('game-over', async ({ roomId, winner }) => {
     return;
   }
 
-  // Broadcast to all in the room, include roomId
   io.to(roomId).emit('game-over', { winner, roomId });
   console.log(`Game over in room ${roomId}. Winner: ${winner}`);
 });
@@ -389,9 +388,7 @@ socket.on('request-new-game', async (data) => {
   }
 
   const { roomId, userId } = data;
-
-  // Ensure socket actually joined that room
-  socket.join(roomId);
+  socket.userId = userId; // 🛠 FIX: store on socket for disconnect cleanup
 
   // Initialize tracking set for room
   if (!playAgainRequests.has(roomId)) {
@@ -401,16 +398,49 @@ socket.on('request-new-game', async (data) => {
   const readySet = playAgainRequests.get(roomId);
   readySet.add(userId);
 
-  // Broadcast number of ready players
-  io.to(roomId).emit('player-ready', { count: readySet.size });
+  // Get total number of players (red + blue)
+  const room = io.sockets.adapter.rooms.get(roomId);
+  let totalPlayers = 0;
+  if (room) {
+    for (const socketId of room) {
+      const sock = io.sockets.sockets.get(socketId);
+      if (sock && (sock.role === 'red' || sock.role === 'blue')) {
+        totalPlayers++;
+      }
+    }
+  }
+  if (totalPlayers === 0) totalPlayers = 2; // fallback
 
-  // --- Debug logging ---
-  console.log(`Player ${userId} ready in room ${roomId}. Count: ${readySet.size}`);
+  // Broadcast ready state
+  io.to(roomId).emit('player-ready', { 
+    count: readySet.size, 
+    total: totalPlayers 
+  });
 
-  // Start new game when both ready
-  if (readySet.size >= 2) {
+  console.log(`Player ${userId} ready in room ${roomId}. Count: ${readySet.size}/${totalPlayers}`);
+
+  // Start timeout if this is the first vote
+  if (readySet.size === 1 && !playAgainTimeouts.has(roomId)) {
+    const timeoutId = setTimeout(() => {
+      console.log(`Play again timeout reached for room ${roomId}`);
+      io.to(roomId).emit('return-to-menu', { reason: 'not-all-ready' });
+      playAgainRequests.delete(roomId);
+      playAgainTimeouts.delete(roomId);
+    }, 30000);
+
+    playAgainTimeouts.set(roomId, timeoutId);
+  }
+
+  // 🟢 If both players ready — start new game
+  if (readySet.size >= totalPlayers) {
     try {
-      console.log(`✅ Both players ready in room ${roomId}. Starting new game...`);
+      console.log(`✅ All players ready in room ${roomId}. Starting new game...`);
+
+      // Clear timeout
+      if (playAgainTimeouts.has(roomId)) {
+        clearTimeout(playAgainTimeouts.get(roomId));
+        playAgainTimeouts.delete(roomId);
+      }
 
       const emptyBoard = Array(6).fill().map(() => Array(7).fill(0));
 
@@ -420,8 +450,8 @@ socket.on('request-new-game', async (data) => {
       });
 
       playAgainRequests.delete(roomId);
-      io.to(roomId).emit('new-game-started');
 
+      io.to(roomId).emit('new-game-started');
       console.log(`🎮 New game started in room ${roomId}`);
     } catch (err) {
       console.error(`❌ Error resetting board for room ${roomId}:`, err);
@@ -429,20 +459,84 @@ socket.on('request-new-game', async (data) => {
   }
 });
 
-// Optional cleanup if player disconnects
-socket.on('disconnect', () => {
-  for (const [roomId, readySet] of playAgainRequests.entries()) {
-    if (readySet.has(socket.id)) {
-      readySet.delete(socket.id);
-      io.to(roomId).emit('player-ready', { count: readySet.size });
+socket.on('cancel-new-game', async ({ roomId, userId }) => {
+  if (!roomId || !userId) return;
+
+  if (playAgainRequests.has(roomId)) {
+    const readySet = playAgainRequests.get(roomId);
+    readySet.delete(userId);
+    console.log(`Player ${userId} cancelled play again in room ${roomId}`);
+
+    const room = io.sockets.adapter.rooms.get(roomId);
+    let totalPlayers = 0;
+    if (room) {
+      for (const socketId of room) {
+        const sock = io.sockets.sockets.get(socketId);
+        if (sock && (sock.role === 'red' || sock.role === 'blue')) {
+          totalPlayers++;
+        }
+      }
     }
+    if (totalPlayers === 0) totalPlayers = 2;
+
+    if (readySet.size === 0) {
+      if (playAgainTimeouts.has(roomId)) {
+        clearTimeout(playAgainTimeouts.get(roomId));
+        playAgainTimeouts.delete(roomId);
+      }
+      playAgainRequests.delete(roomId);
+    }
+
+    io.to(roomId).emit('player-cancelled', { 
+      count: readySet.size, 
+      total: totalPlayers 
+    });
   }
 });
 
-    socket.on('disconnect', async () => {
-      console.log(`Socket ${socket.id} disconnected`);
-      });
-  });
+// Store role and userId for disconnect cleanup
+socket.on('assign-role', (role) => {
+  socket.role = role;
+});
+
+socket.on('disconnect', () => {
+  console.log(`Socket ${socket.id} disconnected`);
+
+  const userId = socket.userId; // 🛠 FIX: use stored userId
+  if (!userId) return;
+
+  for (const [roomId, readySet] of playAgainRequests.entries()) {
+    if (readySet.has(userId)) {
+      readySet.delete(userId);
+
+      const room = io.sockets.adapter.rooms.get(roomId);
+      let totalPlayers = 0;
+      if (room) {
+        for (const socketId of room) {
+          const sock = io.sockets.sockets.get(socketId);
+          if (sock && (sock.role === 'red' || sock.role === 'blue')) {
+            totalPlayers++;
+          }
+        }
+      }
+      if (totalPlayers === 0) totalPlayers = 2;
+
+      if (readySet.size === 0) {
+        if (playAgainTimeouts.has(roomId)) {
+          clearTimeout(playAgainTimeouts.get(roomId));
+          playAgainTimeouts.delete(roomId);
+        }
+        playAgainRequests.delete(roomId);
+      } else {
+        io.to(roomId).emit('player-cancelled', { 
+          count: readySet.size, 
+          total: totalPlayers 
+        });
+      }
+    }
+  }
+});
+});
 
 server.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
