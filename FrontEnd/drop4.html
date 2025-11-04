@@ -243,10 +243,42 @@
                 // Now that DOM is ready and role is assigned, initialize board
                 initializeBoard();
             });
-            window.addEventListener('pagehide', () => {
+            function notifyLeaveGame() {
                 const roomId = sessionStorage.getItem('roomId');
                 if (roomId) {
                     socket.emit('leave-game', roomId);
+                    console.log('leave-game emitted for room:', roomId);
+                }
+            }
+            function isSafari() {
+                const userAgent = navigator.userAgent;
+                // Check if "Safari" is present and "Chrome" is NOT present in the User-Agent string.
+                // This helps differentiate Safari from Chrome, which also includes "Safari" in its UA string.
+                return /Safari/i.test(userAgent) && !/Chrome/i.test(userAgent);
+            }
+            if(isSafari()){
+                if (window.performance && window.performance.navigation) {
+                    if (performance.navigation.type === performance.navigation.TYPE_RELOAD) {
+                        console.log("This page was reloaded.");
+                        socket.emit('leave-game', roomId);
+                        console.log('leave-game emitted from safari for room:', roomId);
+                    }
+                } else if (window.performance && window.performance.getEntriesByType) {
+                    // For newer browsers using PerformanceNavigationTiming
+                    const navigationEntries = window.performance.getEntriesByType('navigation');
+                    if (navigationEntries.length > 0 && navigationEntries[0].type === 'reload') {
+                        console.log("This page was reloaded (PerformanceNavigationTiming).");
+                        socket.emit('leave-game', roomId);
+                        console.log('leave-game emitted from safari for room:', roomId);
+                    }
+                } else {
+                    console.log("Performance navigation information is not available in this browser.");
+                }
+            }
+            // Fires when tab is backgrounded or visibility changes
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') {
+                    notifyLeaveGame();
                 }
             });
 
