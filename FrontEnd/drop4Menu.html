@@ -409,6 +409,14 @@
 
         /* Responsive */
         @media (max-width: 768px) {
+            body::after {
+                display: none !important;
+            }
+
+            body.light::after {
+                display: none !important;
+            }
+
             .game-title {
                 font-size: 28px;
             }
@@ -440,6 +448,14 @@
         }
 
         @media (max-width: 480px) {
+            body::after {
+                display: none !important;
+            }
+
+            body.light::after {
+                display: none !important;
+            }
+
             .game-title {
                 font-size: 22px;
             }
