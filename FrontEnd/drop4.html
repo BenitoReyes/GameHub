@@ -808,4 +808,66 @@
 </script>
 
 </body>
+                <!-- async function getSuggestion() {
+                    // Check if it's the user's turn
+                    if (!isMyTurn) {
+                        alert("Please wait for your turn!");
+                        return;
+                    }
+
+                    try {
+                        // Use the game's `board` variable (from script.js). Convert empty (0) to null
+                        const boardState = (typeof board !== 'undefined')
+                            ? board.map(row => row.map(cell => cell === 0 ? null : cell))
+                            : Array.from({ length: 6 }, () => Array(7).fill(null));
+
+                        // currentPlayer is maintained by the main game script; use it if available
+                        const playerToSend = typeof currentPlayer !== 'undefined' ? currentPlayer : 'red';
+
+                        // Make the API call
+                        const response = await fetch('/api/drop4/suggest', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                board: boardState,
+                                currentPlayer: playerToSend
+                            }),
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Failed to get suggestion');
+                        }
+
+                        const data = await response.json();
+                        if (data.column >= 0) {
+                            highlightColumn(data.column);
+                        } else {
+                            alert('No valid moves available');
+                        }
+                    } catch (error) {
+                        console.error('Error getting suggestion:', error);
+                        alert('Failed to get move suggestion. Please try again.');
+                    }
+                }
+
+                // Add click event listener to suggestion button
+                suggestionBtn.addEventListener('click', getSuggestion);
+
+                // Update suggestion button visibility based on role
+                function updateSuggestionButtonVisibility() {
+                    if (role === 'spectator') {
+                        suggestionBtn.style.display = 'none';
+                    } else {
+                        suggestionBtn.style.display = 'block';
+                    }
+                }
+                updateSuggestionButtonVisibility();
+
+                // Now that DOM is ready and role is assigned, initialize board
+                initializeBoard();
+            }); -->
+        </script>
+    </body>
 </html>

@@ -157,13 +157,11 @@ function initializeBoard() {
           socket.emit('incrementBlueScore', scriptRoomId);
         }
         socket.emit('getScores', scriptRoomId);
-        updateTurnIndicator();
         setTimeout(() => {
           showResultModal(`${currentPlayer.toUpperCase()} WINS!`);
         }, 100);
       } else if (isDraw()) {
         gameOver = true;
-        updateTurnIndicator();
         setTimeout(() => {
           showResultModal('DRAW!');
         }, 100);
@@ -186,7 +184,6 @@ function initializeBoard() {
       clearColumnHighlight(col);
     });
   });
-  updateTurnIndicator();
 }
 
 // BOARD FUNCTIONS
@@ -224,7 +221,6 @@ function updateUI(row, col, player) {
   });
 
 
-  updateTurnIndicator();
 }
 
 
@@ -380,6 +376,7 @@ function resetGame() {
   }
   
   updateTurnIndicator();
+  currentPlayer = assignedPlayer || PLAYER1;
 }
 
 // SOCKET EVENTS AND STREAM CHAT INTEGRATION
