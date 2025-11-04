@@ -248,7 +248,6 @@
             function notifyLeaveGame() {
                 if (hasLeft) return; // prevent double execution
                 hasLeft = true;
-
                 const roomId = sessionStorage.getItem('roomId');
                 if (roomId) {
                     socket.emit('leave-game', roomId);
@@ -256,11 +255,13 @@
                 }
             }
 
+
             document.addEventListener('visibilitychange', function() {
                 if (document.visibilityState === 'hidden') {
                     notifyLeaveGame();
                     // Page is hidden due to tab switch or app backgrounding
                     // This might not reliably fire on reload/back nav in Safari
+
                 }
             });
 
