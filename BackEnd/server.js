@@ -372,6 +372,7 @@ io.on('connection', async (socket) => {
 
     socket.on('disconnect', async () => {
       console.log(`Socket ${socket.id} disconnected`);
+      let role = '';
       //figure out hwo to disconnect on a timer and use a map to store userId and roomId and use this to leave game 
       const meta = socketMeta.get(socket.id);
       if (!meta) return;
@@ -393,8 +394,31 @@ io.on('connection', async (socket) => {
             where: { id: roomId },
             select: { inRoom: true }
           });
+          let participant = await prisma.roomParticipant.findUnique({
+            where: {userId_roomId:{userId, roomId}}
+          });
+          if (!participant) {
+          console.warn(`No participant found for user ${userId} in room ${roomId}`);
+          role = 'spectator'; // fallback
+        } else if (participant.permission === 'HOST') {
+          role = 'red';
+        } else if (participant.permission === 'PLAYER') {
+          role = 'blue';
+        } else {
+          role = 'spectator';
+        }
 
-          console.log(`User ${userId} left room ${roomId} # current inRoom: ${room.inRoom}`);
+          if (participant.permission == 'HOST'){
+            role = 'red';
+        } else if (participant.permission == 'PLAYER'){
+            role = 'blue';
+        } else {
+          role = 'spectator';
+        }
+          io.to(roomId).emit('player-left', {
+            userId, role
+        });
+
 
           if (room.inRoom <= 0) {
             await prisma.roomParticipant.deleteMany({ where: { roomId } });

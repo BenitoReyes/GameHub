@@ -214,6 +214,52 @@ function showRoleModal(message) {
   modal.style.display = 'flex';
 }
 
+function showPlayerLeftModal({ username, role }) {
+  let modal = document.getElementById('playerLeftModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'playerLeftModal';
+    modal.className = 'modal-overlay';
+
+    const content = document.createElement('div');
+    content.className = 'modal-content modal-anim-content';
+
+    const msg = document.createElement('p');
+    msg.id = 'playerLeftMessage';
+    msg.style.marginBottom = '16px';
+    content.appendChild(msg);
+
+    const btn = document.createElement('button');
+    btn.textContent = 'OK';
+    Object.assign(btn.style, {
+      padding: '8px 14px',
+      fontSize: '14px',
+      cursor: 'pointer',
+      borderRadius: '6px',
+      border: 'none',
+      background: '#ef4444',
+      color: '#fff',
+      fontFamily: "'Press Start 2P', cursive"
+    });
+
+    btn.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
+
+    content.appendChild(btn);
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+  }
+
+  const msgEl = document.getElementById('playerLeftMessage');
+  if (msgEl) {
+    msgEl.textContent = `${username || 'A player'} (${role || 'unknown'}) has left the game.`;
+    msgEl.style.color = role === 'red' ? '#ef4444' : role === 'blue' ? '#3b82f6' : '#fbbf24';
+  }
+
+  modal.style.display = 'flex';
+}
+
 // INITIALIZATION
 
 function initializeBoard() {
@@ -566,6 +612,11 @@ if (sendBtn && input) {
 
   return { chatClient, gameChannel };
 }
+socket.on('player-left', ({ username, role }) => {
+  console.log(`${username || 'A player'} (${role}) left the game.`);
+  showPlayerLeftModal({ username, role });
+  // Optionally show a toast, update UI, or disable board
+});
 
 socket.on('game-created', async ({ roomId, userId, token, role, username}) => {
   console.log("game created");
