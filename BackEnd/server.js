@@ -172,12 +172,13 @@ io.on('connection', async (socket) => {
       socket.join(roomId);
       socketMeta.set(socket.id, {roomId});
       console.log('join-room event received for room:', roomId);
-      const timeoutId = disconnectTimers.get(socket.id);
+      const timeoutId = disconnectTimers.get(userId);
       if (timeoutId) {
         clearTimeout(timeoutId);
-        disconnectTimers.delete(socket.id);
-        console.log(`Reconnected: canceled cleanup for socket ${socket.id}`);
+        disconnectTimers.delete(userId);
+        console.log(`Reconnected: canceled cleanup for user ${userId}`);
       }
+
       await prisma.room.update({
         where: {id:roomId},
         data: {inRoom:{increment : 1}}
@@ -372,15 +373,15 @@ io.on('connection', async (socket) => {
 
     socket.on('disconnect', async () => {
       console.log(`Socket ${socket.id} disconnected`);
-      let role = '';
-      //figure out hwo to disconnect on a timer and use a map to store userId and roomId and use this to leave game 
+
       const meta = socketMeta.get(socket.id);
       if (!meta) return;
 
-      const roomId = meta.roomId;
+      const { roomId } = meta;
 
+      // Store disconnect timer keyed by userId
       const timeoutId = setTimeout(async () => {
-        console.log(`Cleaning up socket ${socket.id} from room ${roomId} after grace period`);
+        console.log(`Cleaning up user ${userId} from room ${roomId} after grace period`);
 
         try {
           const oldroom = await prisma.room.update({
@@ -394,31 +395,20 @@ io.on('connection', async (socket) => {
             where: { id: roomId },
             select: { inRoom: true }
           });
-          let participant = await prisma.roomParticipant.findUnique({
-            where: {userId_roomId:{userId, roomId}}
+
+          const participant = await prisma.roomParticipant.findUnique({
+            where: { userId_roomId: { userId, roomId } }
           });
-          if (!participant) {
-          console.warn(`No participant found for user ${userId} in room ${roomId}`);
-          role = 'spectator'; // fallback
-        } else if (participant.permission === 'HOST') {
-          role = 'red';
-        } else if (participant.permission === 'PLAYER') {
-          role = 'blue';
-        } else {
-          role = 'spectator';
-        }
 
-          if (participant.permission == 'HOST'){
-            role = 'red';
-        } else if (participant.permission == 'PLAYER'){
-            role = 'blue';
-        } else {
-          role = 'spectator';
-        }
-          io.to(roomId).emit('player-left', {
-            userId, role
-        });
+          let role = 'spectator';
+          if (participant) {
+            if (participant.permission === 'HOST') role = 'red';
+            else if (participant.permission === 'PLAYER') role = 'blue';
+          } else {
+            console.warn(`No participant found for user ${userId} in room ${roomId}`);
+          }
 
+          io.to(roomId).emit('player-left', { userId, role });
 
           if (room.inRoom <= 0) {
             await prisma.roomParticipant.deleteMany({ where: { roomId } });
@@ -430,12 +420,12 @@ io.on('connection', async (socket) => {
         }
 
         socketMeta.delete(socket.id);
-        disconnectTimers.delete(socket.id);
+        disconnectTimers.delete(userId);
       }, 10000); // 10-second grace period
 
-      disconnectTimers.set(socket.id, timeoutId);
-      });
-  });
+      disconnectTimers.set(userId, timeoutId);
+    });
+});
 
 server.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
