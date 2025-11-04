@@ -243,33 +243,6 @@
                 // Now that DOM is ready and role is assigned, initialize board
                 initializeBoard();
             });
-            let hasLeft = false;
-
-            function notifyLeaveGame() {
-                if (hasLeft) return; // prevent double execution
-                hasLeft = true;
-                const roomId = sessionStorage.getItem('roomId');
-                if (roomId) {
-                    socket.emit('leave-game', roomId);
-                    console.log('leave-game emitted for room:', roomId);
-                }
-            }
-
-
-            document.addEventListener('visibilitychange', function() {
-                if (document.visibilityState === 'hidden') {
-                    notifyLeaveGame();
-                    // Page is hidden due to tab switch or app backgrounding
-                    // This might not reliably fire on reload/back nav in Safari
-
-                }
-            });
-
-            window.addEventListener('pagehide', function() {
-                notifyLeaveGame();
-                // Page is being navigated away from (including reload or back/forward)
-                // This is more reliable for detecting unload scenarios in Safari
-            });
         </script>
     </body>
 </html>

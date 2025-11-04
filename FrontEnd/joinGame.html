@@ -363,8 +363,10 @@
             const roomId = document.getElementById('roomIdInput').value;
             socket.emit('join-game', roomId);
         });
-
         socket.emit('get-rooms');
+        setInterval(()=>{
+            socket.emit('get-rooms');
+        }, 2500)
         socket.on('room-list', (rooms) => {
             document.getElementById('roomList').innerHTML = rooms.map(room => `
                 <div class="room-entry">

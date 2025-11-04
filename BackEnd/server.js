@@ -19,6 +19,8 @@ const STREAM_API_KEY = process.env.STREAM_API_KEY;
 const STREAM_SECRET = process.env.STREAM_SECRET;
 const serverClient = StreamChat.getInstance(STREAM_API_KEY, STREAM_SECRET);
 const PORT = process.env.PORT || 3000;
+const socketMeta = new Map();
+const disconnectTimers = new Map(); // socket.id → timeoutId
 app.use(express.static('FrontEnd')); // Serve frontend files
 app.use(express.json()); // Middleware to parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // parse form bodies if needed
@@ -128,7 +130,7 @@ io.on('connection', async (socket) => {
     const userId = cookies.userId;
     socket.on('create-game', async () => {
       const roomId = v4().slice(0,8); // generate a unique room ID
-      const token = serverClient.createToken(userId)
+      const token = serverClient.createToken(userId);
       const emptyBoard = Array.from({ length: 6 }, () => Array(7).fill(0));
       await prisma.room.create({
         data: { id: roomId, host: {connect: {id:userId}}, isPublic: true, board: emptyBoard, inRoom: 0 }
@@ -168,16 +170,18 @@ io.on('connection', async (socket) => {
 
     socket.on('join-room', async (roomId) => {
       socket.join(roomId);
+      socketMeta.set(socket.id, {roomId});
       console.log('join-room event received for room:', roomId);
-      try {
-        await prisma.room.update({
-          where: { id: roomId },
-          data: { inRoom: { increment: 1 } }
-        });
-        console.log(`inRoom incremented for ${roomId}`);
-      } catch (err) {
-        console.error(`Failed to increment inRoom for ${roomId}:`, err);
+      const timeoutId = disconnectTimers.get(socket.id);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        disconnectTimers.delete(socket.id);
+        console.log(`Reconnected: canceled cleanup for socket ${socket.id}`);
       }
+      await prisma.room.update({
+        where: {id:roomId},
+        data: {inRoom:{increment : 1}}
+      });
       console.log(`Socket ${socket.id} joined room ${roomId}`);
     });
 
@@ -368,6 +372,44 @@ io.on('connection', async (socket) => {
 
     socket.on('disconnect', async () => {
       console.log(`Socket ${socket.id} disconnected`);
+      //figure out hwo to disconnect on a timer and use a map to store userId and roomId and use this to leave game 
+      const meta = socketMeta.get(socket.id);
+      if (!meta) return;
+
+      const roomId = meta.roomId;
+
+      const timeoutId = setTimeout(async () => {
+        console.log(`Cleaning up socket ${socket.id} from room ${roomId} after grace period`);
+
+        try {
+          const oldroom = await prisma.room.update({
+            where: { id: roomId },
+            data: { inRoom: { decrement: 1 } }
+          });
+
+          if (!oldroom) return;
+
+          const room = await prisma.room.findUnique({
+            where: { id: roomId },
+            select: { inRoom: true }
+          });
+
+          console.log(`User ${userId} left room ${roomId} # current inRoom: ${room.inRoom}`);
+
+          if (room.inRoom <= 0) {
+            await prisma.roomParticipant.deleteMany({ where: { roomId } });
+            await prisma.room.delete({ where: { id: roomId } });
+            console.log(`Room ${roomId} deleted as it became empty`);
+          }
+        } catch (err) {
+          console.error(`Error cleaning up room ${roomId}:`, err);
+        }
+
+        socketMeta.delete(socket.id);
+        disconnectTimers.delete(socket.id);
+      }, 10000); // 10-second grace period
+
+      disconnectTimers.set(socket.id, timeoutId);
       });
   });
 
