@@ -369,219 +369,50 @@ io.on('connection', async (socket) => {
         }
       }, 5000); // 5 second delay
     });
-// --------------------------- 
-// GAME OVER + PLAY AGAIN LOGIC
-// ---------------------------
-const playAgainRequests = new Map(); // roomId -> Set of userIds
-const playAgainTimeouts = new Map(); // roomId -> timeout ID
 
-socket.on('game-over', async ({ roomId, winner }) => {
-  if (!roomId) {
-    console.warn('⚠️ game-over event missing roomId');
-    return;
-  }
+    socket.on('disconnect', async () => {
+      console.log(`Socket ${socket.id} disconnected`);
+      //figure out hwo to disconnect on a timer and use a map to store userId and roomId and use this to leave game 
+      const meta = socketMeta.get(socket.id);
+      if (!meta) return;
 
-  io.to(roomId).emit('game-over', { winner, roomId });
-  console.log(`Game over in room ${roomId}. Winner: ${winner}`);
-});
+      const roomId = meta.roomId;
 
-socket.on('request-new-game', async (data) => {
-  if (!data || !data.roomId || !data.userId) {
-    console.warn('request-new-game missing required data:', data);
-    return;
-  }
+      const timeoutId = setTimeout(async () => {
+        console.log(`Cleaning up socket ${socket.id} from room ${roomId} after grace period`);
 
-  const { roomId, userId } = data;
-  socket.userId = userId; // Store on socket for disconnect cleanup
+        try {
+          const oldroom = await prisma.room.update({
+            where: { id: roomId },
+            data: { inRoom: { decrement: 1 } }
+          });
 
-  // Initialize tracking set for room if it doesn't exist
-  if (!playAgainRequests.has(roomId)) {
-    playAgainRequests.set(roomId, new Set());
-  }
+          if (!oldroom) return;
 
-  const readySet = playAgainRequests.get(roomId);
-  readySet.add(userId);
+          const room = await prisma.room.findUnique({
+            where: { id: roomId },
+            select: { inRoom: true }
+          });
 
-  // Get total number of players (red + blue)
-  const room = io.sockets.adapter.rooms.get(roomId);
-  let totalPlayers = 0;
-  if (room) {
-    for (const socketId of room) {
-      const sock = io.sockets.sockets.get(socketId);
-      if (sock && (sock.role === 'red' || sock.role === 'blue')) {
-        totalPlayers++;
-      }
-    }
-  }
-  if (totalPlayers === 0) totalPlayers = 2; // fallback
+          console.log(`User ${userId} left room ${roomId} # current inRoom: ${room.inRoom}`);
 
-  // Broadcast ready state
-  io.to(roomId).emit('player-ready', { 
-    count: readySet.size, 
-    total: totalPlayers 
-  });
-
-  socket.on('disconnect', async () => {
-    console.log(`Socket ${socket.id} disconnected`);
-    //figure out hwo to disconnect on a timer and use a map to store userId and roomId and use this to leave game 
-    const meta = socketMeta.get(socket.id);
-    if (!meta) return;
-
-    const roomId = meta.roomId;
-
-    const timeoutId = setTimeout(async () => {
-      console.log(`Cleaning up socket ${socket.id} from room ${roomId} after grace period`);
-
-      try {
-        const oldroom = await prisma.room.update({
-          where: { id: roomId },
-          data: { inRoom: { decrement: 1 } }
-        });
-
-        if (!oldroom) return;
-
-        const room = await prisma.room.findUnique({
-          where: { id: roomId },
-          select: { inRoom: true }
-        });
-
-        console.log(`User ${userId} left room ${roomId} # current inRoom: ${room.inRoom}`);
-
-        if (room.inRoom <= 0) {
-          await prisma.roomParticipant.deleteMany({ where: { roomId } });
-          await prisma.room.delete({ where: { id: roomId } });
-          console.log(`Room ${roomId} deleted as it became empty`);
-        }
-      } catch (err) {
-        console.error(`Error cleaning up room ${roomId}:`, err);
-      }
-
-      socketMeta.delete(socket.id);
-      disconnectTimers.delete(socket.id);
-    }, 10000); // 10-second grace period
-
-    disconnectTimers.set(socket.id, timeoutId);
-  });
-
-  console.log(`Player ${userId} ready in room ${roomId}. Count: ${readySet.size}/${totalPlayers}`);
-
-  // Start timeout if this is the first vote
-  if (readySet.size === 1 && !playAgainTimeouts.has(roomId)) {
-    const timeoutId = setTimeout(() => {
-      console.log(`Play again timeout reached for room ${roomId}`);
-      io.to(roomId).emit('return-to-menu', { reason: 'not-all-ready' });
-      playAgainRequests.delete(roomId);
-      playAgainTimeouts.delete(roomId);
-    }, 30000);
-
-    playAgainTimeouts.set(roomId, timeoutId);
-  }
-
-  // Start new game when all players are ready
-  if (readySet.size >= totalPlayers) {
-    try {
-      console.log(`✅ ${readySet.size}/${totalPlayers} players ready in room ${roomId}. Starting new game...`);
-
-      const emptyBoard = Array(6).fill().map(() => Array(7).fill(0));
-
-      await prisma.room.update({
-        where: { id: roomId },
-        data: { board: emptyBoard },
-      });
-
-      // Clear timeouts and requests
-      if (playAgainTimeouts.has(roomId)) {
-        clearTimeout(playAgainTimeouts.get(roomId));
-        playAgainTimeouts.delete(roomId);
-      }
-      playAgainRequests.delete(roomId);
-
-      io.to(roomId).emit('new-game-started');
-      console.log(`🎮 New game started in room ${roomId}`);
-    } catch (err) {
-      console.error(`❌ Error resetting board for room ${roomId}:`, err);
-    }
-    }
-});
-
-socket.on('cancel-new-game', async ({ roomId, userId }) => {
-  if (!roomId || !userId) return;
-
-  if (playAgainRequests.has(roomId)) {
-    const readySet = playAgainRequests.get(roomId);
-    readySet.delete(userId);
-    console.log(`Player ${userId} cancelled play again in room ${roomId}`);
-
-    const room = io.sockets.adapter.rooms.get(roomId);
-    let totalPlayers = 0;
-    if (room) {
-      for (const socketId of room) {
-        const sock = io.sockets.sockets.get(socketId);
-        if (sock && (sock.role === 'red' || sock.role === 'blue')) {
-          totalPlayers++;
-        }
-      }
-    }
-    if (totalPlayers === 0) totalPlayers = 2;
-
-    if (readySet.size === 0) {
-      if (playAgainTimeouts.has(roomId)) {
-        clearTimeout(playAgainTimeouts.get(roomId));
-        playAgainTimeouts.delete(roomId);
-      }
-      playAgainRequests.delete(roomId);
-    }
-
-    io.to(roomId).emit('player-cancelled', { 
-      count: readySet.size, 
-      total: totalPlayers 
-    });
-  }
-});
-
-// Store role and userId for disconnect cleanup
-socket.on('assign-role', (role) => {
-  socket.role = role;
-});
-
-socket.on('disconnect', () => {
-  console.log(`Socket ${socket.id} disconnected`);
-
-  const userId = socket.userId; // 🛠 FIX: use stored userId
-  if (!userId) return;
-
-  for (const [roomId, readySet] of playAgainRequests.entries()) {
-    if (readySet.has(userId)) {
-      readySet.delete(userId);
-
-      const room = io.sockets.adapter.rooms.get(roomId);
-      let totalPlayers = 0;
-      if (room) {
-        for (const socketId of room) {
-          const sock = io.sockets.sockets.get(socketId);
-          if (sock && (sock.role === 'red' || sock.role === 'blue')) {
-            totalPlayers++;
+          if (room.inRoom <= 0) {
+            await prisma.roomParticipant.deleteMany({ where: { roomId } });
+            await prisma.room.delete({ where: { id: roomId } });
+            console.log(`Room ${roomId} deleted as it became empty`);
           }
+        } catch (err) {
+          console.error(`Error cleaning up room ${roomId}:`, err);
         }
-      }
-      if (totalPlayers === 0) totalPlayers = 2;
 
-      if (readySet.size === 0) {
-        if (playAgainTimeouts.has(roomId)) {
-          clearTimeout(playAgainTimeouts.get(roomId));
-          playAgainTimeouts.delete(roomId);
-        }
-        playAgainRequests.delete(roomId);
-      } else {
-        io.to(roomId).emit('player-cancelled', { 
-          count: readySet.size, 
-          total: totalPlayers 
-        });
-      }
-    }
-  }
-});
-});
+        socketMeta.delete(socket.id);
+        disconnectTimers.delete(socket.id);
+      }, 10000); // 10-second grace period
+
+      disconnectTimers.set(socket.id, timeoutId);
+      });
+  });
+
 server.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
 });
