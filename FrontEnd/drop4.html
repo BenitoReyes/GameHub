@@ -24,6 +24,9 @@
         </div>
 
         <div class="game-wrapper">
+            <div class="suggestion-controls">
+                <button id="suggestionBtn" class="suggestion-button">Get Move Suggestion</button>
+            </div>
             <div class="board-container">
                 <div id="game-board">
                 <!-- 6 rows × 7 columns = 42 cells -->
@@ -157,6 +160,86 @@
                 socket.on('scoreUpdate', ({ redScore: rScore, blueScore: bScore }) => {
                     renderScores(rScore, bScore);
                 });
+
+                // Add suggestion button functionality
+                const suggestionBtn = document.getElementById('suggestionBtn');
+                let previousHighlight = null;
+
+                function removeHighlight() {
+                    if (previousHighlight !== null) {
+                        const cells = document.querySelectorAll(`.cell[data-col="${previousHighlight}"]`);
+                        cells.forEach(cell => cell.classList.remove('column-highlight'));
+                        previousHighlight = null;
+                    }
+                }
+
+                function highlightColumn(column) {
+                    removeHighlight();
+                    const cells = document.querySelectorAll(`.cell[data-col="${column}"]`);
+                    cells.forEach(cell => cell.classList.add('column-highlight'));
+                    previousHighlight = column;
+
+                    // Remove highlight after 3 seconds
+                    setTimeout(removeHighlight, 3000);
+                }
+
+                async function getSuggestion() {
+                    // Check if it's the user's turn
+                    if (!isMyTurn) {
+                        alert("Please wait for your turn!");
+                        return;
+                    }
+
+                    try {
+                        // Use the game's `board` variable (from script.js). Convert empty (0) to null
+                        const boardState = (typeof board !== 'undefined')
+                            ? board.map(row => row.map(cell => cell === 0 ? null : cell))
+                            : Array.from({ length: 6 }, () => Array(7).fill(null));
+
+                        // currentPlayer is maintained by the main game script; use it if available
+                        const playerToSend = typeof currentPlayer !== 'undefined' ? currentPlayer : 'red';
+
+                        // Make the API call
+                        const response = await fetch('/api/drop4/suggest', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                board: boardState,
+                                currentPlayer: playerToSend
+                            }),
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Failed to get suggestion');
+                        }
+
+                        const data = await response.json();
+                        if (data.column >= 0) {
+                            highlightColumn(data.column);
+                        } else {
+                            alert('No valid moves available');
+                        }
+                    } catch (error) {
+                        console.error('Error getting suggestion:', error);
+                        alert('Failed to get move suggestion. Please try again.');
+                    }
+                }
+
+                // Add click event listener to suggestion button
+                suggestionBtn.addEventListener('click', getSuggestion);
+
+                // Update suggestion button visibility based on role
+                function updateSuggestionButtonVisibility() {
+                    if (role === 'spectator') {
+                        suggestionBtn.style.display = 'none';
+                    } else {
+                        suggestionBtn.style.display = 'block';
+                    }
+                }
+                updateSuggestionButtonVisibility();
+
                 // Now that DOM is ready and role is assigned, initialize board
                 initializeBoard();
             });

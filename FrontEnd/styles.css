@@ -71,15 +71,44 @@ body.game-page {
 
 /* Game container - holds board and chat side by side on desktop */
 .game-wrapper {
-  display: flex;
-  flex-direction: row;
-  gap: 20px;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 20px;
-  align-items: flex-start;
-  min-height: 100vh;
-  overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.suggestion-controls {
+    margin-bottom: 20px;
+}
+
+.suggestion-button {
+    background-color: #4CAF50;
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.suggestion-button:hover {
+    background-color: #45a049;
+}
+
+.column-highlight {
+    animation: highlightPulse 1.5s infinite;
+}
+
+@keyframes highlightPulse {
+    0% { background-color: rgba(255, 255, 0, 0.1); }
+    50% { background-color: rgba(255, 255, 0, 0.3); }
+    100% { background-color: rgba(255, 255, 0, 0.1); }
 }
 
 .board-container {
