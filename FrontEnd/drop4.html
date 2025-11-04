@@ -243,14 +243,13 @@
                 // Now that DOM is ready and role is assigned, initialize board
                 initializeBoard();
             });
-            document.addEventListener('visibilitychange', () => {
-                if (document.visibilityState === 'hidden') {
-                    const roomId = sessionStorage.getItem('roomId');
-                    if (roomId) {
+            window.addEventListener('pagehide', () => {
+                const roomId = sessionStorage.getItem('roomId');
+                if (roomId) {
                     socket.emit('leave-game', roomId);
-                    }
                 }
             });
+
         </script>
     </body>
 </html>
