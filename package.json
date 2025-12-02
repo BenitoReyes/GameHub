@@ -37,4 +37,15 @@
   "devDependencies": {
     "prisma": "^6.16.2"
   }
+  "jest": {
+  "coverageThreshold": {
+    "global": {
+      "branches": 70,
+      "functions": 70,
+      "lines": 70,
+      "statements": 70
+    }
+  }
+}
+
 }
