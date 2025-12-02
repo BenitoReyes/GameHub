@@ -20,6 +20,7 @@ model User {
 model Room {
   id           String            @id @default(uuid())
   hostId       String
+  gameType     String            @default("drop4")
   isPublic     Boolean           @default(true)
   createdAt    DateTime          @default(now())
   board        Json

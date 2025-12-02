@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Battleship</title>
+    </head>
+    <body>
+        <a href="battleshipMenu.html">Back</a>
+        <h1>Battleship (Module)</h1>
+        <div id="board">Loading...</div>
+        <script src="/socket.io/socket.io.js"></script>
+        <script type="module">
+        import battleshipModule from './game.js';
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomId = urlParams.get('roomId');
+        const userId = sessionStorage.getItem('userId');
+        const token = sessionStorage.getItem('token');
+        const role = sessionStorage.getItem('role');
+        const username = sessionStorage.getItem('username');
+        battleshipModule.init({ roomId, userId, token, role, username });
+        </script>
+    </body>
+</html>

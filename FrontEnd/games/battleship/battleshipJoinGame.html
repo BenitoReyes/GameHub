@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Battleship - Join Game</title>
+    <style>
+        /* Minimal styling; borrowed from drop4 join */
+        body { font-family: 'Press Start 2P'; background: linear-gradient(180deg, #1a1a2e 0%, #0f3460 100%); color: white; }
+        .join-container { padding: 30px; border: 4px solid #fff; }
+        .back-btn { position: absolute; top: 30px; left: 30px; background: #ef4444; color: #fff; padding: 12px 20px; }
+    </style>
+    </head>
+<body>
+    <a href="battleshipMenu.html" class="back-btn">◄ BACK</a>
+    <div class="join-container">
+        <h1>AVAILABLE BATTLESHIP ROOMS</h1>
+        <div id="roomList"></div>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module">
+        import { getSocket } from '../commonLogic/socket.js';
+        const socket = getSocket();
+        socket.emit('get-rooms', { gameType: 'battleship' });
+        setInterval(() => { socket.emit('get-rooms', { gameType: 'battleship' }); }, 2500);
+        socket.on('room-list', (rooms) => {
+            console.log('battleship JoinGame received rooms:', rooms);
+            const filtered = Array.isArray(rooms) ? rooms.filter(r => r.gameType === 'battleship') : [];
+            if (!filtered || filtered.length === 0) {
+                document.getElementById('roomList').innerHTML = '<div style="color:#fff; padding: 12px;">No active Battleship rooms yet. Create one from the menu!</div>';
+                return;
+            }
+            document.getElementById('roomList').innerHTML = filtered.map(room => `<div><span>${room.host.username}</span> <button data-roomid="${room.id}">Join</button></div>`).join('');
+            document.querySelectorAll('[data-roomid]').forEach(btn => btn.addEventListener('click', () => {
+                socket.emit('join-game', btn.dataset.roomid);
+            }));
+        });
+    </script>
+</body>
+</html>
