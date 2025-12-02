@@ -611,16 +611,20 @@
         </div>
     </div>
 </body>
-</script>
-<script src="stream-chat.bundle.js"></script>
+<script src="../../stream-chat.bundle.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 <script>
-    document.getElementById('create-game-btn').addEventListener('click', (event) => {
-        if (typeof socket === 'undefined') {
-            socket = io();
-        }
+    const socket = io();
+
+    document.getElementById('create-game-btn').addEventListener('click', () => {
         socket.emit('create-game', { gameType: 'battleship' });
     });
+
+    // When the server confirms the room was created
+    socket.on('game-created', ({ roomId }) => {
+        // Redirect into the Battleship board page with the roomId in the query string
+        window.location.href = `battleship.html?roomId=${roomId}`;
+    });
 </script>
-<script src="theme.js"></script>
+<script src="../../theme.js"></script>
 </html>

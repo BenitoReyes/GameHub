@@ -91,8 +91,10 @@ async function forceLeaveRoom(userId, roomId) {
 
     // Update in-memory players
     try {
+      const user = await prisma.user.findUnique({ where: { id: userId }, select: { username: true } });
+      const uname = user?.username || null;
       const rp = roomPlayers.get(roomId) || {};
-      Object.keys(rp).forEach(k => { if (rp[k] === userId || rp[k] === undefined || rp[k] === null) delete rp[k]; });
+      Object.keys(rp).forEach(k => { if (rp[k] === uname || rp[k] === undefined || rp[k] === null) delete rp[k]; });
       io.to(roomId).emit('all-players-info', rp);
     } catch (e) { /* ignore */ }
 
@@ -405,6 +407,15 @@ io.on('connection', async (socket) => {
       socket.join(roomId);
       // Mark socket meta for this socket (so we can map socket->room if needed for socket-level events)
       socketMeta.set(socket.id, { roomId });
+      // If this user has other active rooms, force them to leave those rooms to avoid orphaned rooms
+      try {
+        const prev = userRooms.get(userId) || new Set();
+        for (const r of Array.from(prev)) {
+          if (r !== roomId) {
+            await forceLeaveRoom(userId, r);
+          }
+        }
+      } catch (e) { console.error('create-game: failed to force leave previous rooms', e); }
       // Track the user->room and room->user mappings for unique-user inRoom accounting
       if (!userRooms.has(userId)) userRooms.set(userId, new Set());
       userRooms.get(userId).add(roomId);
@@ -579,6 +590,15 @@ io.on('connection', async (socket) => {
       socket.join(roomId);
       // NOTE: inRoom increment is handled on 'join-room' to avoid double-counting
       socketMeta.set(socket.id, { roomId });
+      // If this user has other active rooms, force them to leave those rooms (we assume single active game per user)
+      try {
+        const prev = userRooms.get(userId) || new Set();
+        for (const r of Array.from(prev)) {
+          if (r !== roomId) {
+            await forceLeaveRoom(userId, r);
+          }
+        }
+      } catch (e) { console.error('join-game: failed to force leave previous rooms', e); }
       // Cancel any pending disconnect cleanup timer for this user/room (reconnect flow)
       const userTimersJoin = disconnectTimers.get(userId);
       if (userTimersJoin && userTimersJoin.has(roomId)) {
@@ -778,6 +798,66 @@ io.on('connection', async (socket) => {
         console.error('Error while computing game result after move:', err);
       }
       try { await emitRoomList(); } catch (e) { /* ignore */ }
+    });
+
+    // Battleship-specific handlers
+    socket.on('place-ships', async ({ roomId, layout } = {}) => {
+      if (!userId) { socket.emit('action-error', { message: 'Not authenticated' }); return; }
+      try {
+        const room = await prisma.room.findUnique({ where: { id: roomId }, select: { board: true, gameType: true } });
+        if (!room) { socket.emit('action-error', { message: 'Room not found' }); return; }
+        const game = getGame(room.gameType);
+        if (!game) { socket.emit('action-error', { message: 'Game module not found' }); return; }
+        // Determine player role from participant entry
+        const participant = await prisma.roomParticipant.findUnique({ where: { userId_roomId: { userId, roomId } } });
+        if (!participant) { socket.emit('action-error', { message: 'Not a participant' }); return; }
+        const role = participant.permission === 'HOST' ? 'red' : (participant.permission === 'PLAYER' ? 'blue' : 'spectator');
+        if (role === 'spectator') { socket.emit('action-error', { message: 'Spectator cannot place ships' }); return; }
+        const action = { type: 'place', color: role, layout };
+        if (!game.validateAction(room.board, action)) { socket.emit('action-error', { message: 'Invalid ship layout' }); return; }
+        const res = game.applyAction(room.board, action, { userId, role });
+        const newBoard = res && res.board ? res.board : res;
+        await prisma.room.update({ where: { id: roomId }, data: { board: newBoard } });
+        io.to(roomId).emit('sync-board', newBoard);
+        socket.emit('placed-ships', { success: true });
+      } catch (err) {
+        console.error('place-ships handler error:', err);
+        socket.emit('action-error', { message: 'Error placing ships' });
+      }
+    });
+
+    socket.on('attack', async ({ roomId, x, y } = {}) => {
+      if (!userId) { socket.emit('action-error', { message: 'Not authenticated' }); return; }
+      try {
+        const room = await prisma.room.findUnique({ where: { id: roomId }, select: { board: true, gameType: true } });
+        if (!room) { socket.emit('action-error', { message: 'Room not found' }); return; }
+        const game = getGame(room.gameType);
+        if (!game) { socket.emit('action-error', { message: 'Game module not found' }); return; }
+        const participant = await prisma.roomParticipant.findUnique({ where: { userId_roomId: { userId, roomId } } });
+        if (!participant) { socket.emit('action-error', { message: 'Not a participant' }); return; }
+        const role = participant.permission === 'HOST' ? 'red' : (participant.permission === 'PLAYER' ? 'blue' : 'spectator');
+        if (role === 'spectator') { socket.emit('action-error', { message: 'Spectator cannot attack' }); return; }
+        const action = { type: 'attack', x, y, player: role };
+        if (!game.validateAction(room.board, action)) { socket.emit('action-error', { message: 'Invalid attack' }); return; }
+        const res = game.applyAction(room.board, action, { userId, role });
+        const newBoard = res && res.board ? res.board : res;
+        const details = res && res.details ? res.details : { hit: false, sunk: null };
+        const updatedRoom = await prisma.room.update({ where: { id: roomId }, data: { board: newBoard }, select: { redScore: true, blueScore: true, board: true } });
+        io.to(roomId).emit('sync-board', newBoard);
+        // emit attack-result to all in room for UI feedback; actor gets immediate message as well
+        io.to(roomId).emit('attack-result', details);
+        // check for winner and emit game-over
+        try {
+          const result = game.getResult(newBoard);
+          if (result && result.winner) {
+            // Optional: update scores (if applicable for the game - here we don't maintain continuous score)
+            io.to(roomId).emit('game-over', { winner: result.winner, board: newBoard, redScore: updatedRoom.redScore, blueScore: updatedRoom.blueScore });
+          }
+        } catch (e) { console.error('attack handler: failed to compute game result', e); }
+      } catch (err) {
+        console.error('attack handler error:', err);
+        socket.emit('action-error', { message: 'Error handling attack' });
+      }
     });
 
     socket.on('reset-game', async (roomId) => {

@@ -1,24 +1,50 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Battleship</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Board Visual</title>
+        <link rel="stylesheet" href="../../styles.css" />
+
     </head>
     <body>
-        <a href="battleshipMenu.html">Back</a>
-        <h1>Battleship (Module)</h1>
-        <div id="board">Loading...</div>
-        <script src="/socket.io/socket.io.js"></script>
-        <script type="module">
+    <a href="battleshipMenu.html" class="back-btn">◄ BACK</a>
+
+    <!-- Floating chips for Battleship theme -->
+    <div class="floating-chip chip-1">⛵</div>
+    <div class="floating-chip chip-2">🚢</div>
+    <div class="floating-chip chip-3">🚢</div>
+    <div class="floating-chip chip-4">⛵</div>
+
+    <!-- Game container -->
+    <div class="battleship-page">
+            <h1>BATTLESHIP</h1>
+            <div id="board" style="padding:20px; color:#fff; font-size:12px; letter-spacing:1px;">
+            Loading...
+            </div>
+    </div>
+
+    <!-- Socket + module init -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module">
         import battleshipModule from './game.js';
+
         const urlParams = new URLSearchParams(window.location.search);
         const roomId = urlParams.get('roomId');
         const userId = sessionStorage.getItem('userId');
         const token = sessionStorage.getItem('token');
         const role = sessionStorage.getItem('role');
         const username = sessionStorage.getItem('username');
+
+        const socket = io();
+
+        // Always emit join-game to ensure role assignment
+        socket.emit('join-room', roomId);
+        socket.emit('join-game', roomId);
+        socket.emit('request-board', roomId);
+
+        // Pass session info to game module
         battleshipModule.init({ roomId, userId, token, role, username });
-        </script>
+    </script>
     </body>
 </html>

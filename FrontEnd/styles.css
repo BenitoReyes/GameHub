@@ -1,510 +1,613 @@
-body {
-  margin: 0;
-  padding: 0;
-  min-height: 100vh;
-  background: linear-gradient(180deg, #0f1724 0%, #071126 100%);
-  color: #e6eef8;
-  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  overflow-x: hidden;
-  overflow-y: auto;
-}
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-body.game-page {
-  overflow: hidden;
-  height: 100vh;
-}
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background: linear-gradient(180deg, #1a1a2e 0%, #0f3460 100%);
+            color: #e6eef8;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+            padding-bottom: 320px;
+        }
 
-/* Profile Pictures */
-.profile-container {
-  position: fixed;
-  top: 48px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  z-index: 20;
-}
+        /* Animated stars background */
+        body::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background-image: 
+                radial-gradient(2px 2px at 20% 30%, white, transparent),
+                radial-gradient(2px 2px at 60% 70%, white, transparent),
+                radial-gradient(1px 1px at 50% 50%, white, transparent),
+                radial-gradient(1px 1px at 80% 10%, white, transparent),
+                radial-gradient(2px 2px at 90% 60%, white, transparent);
+            background-size: 200px 200px;
+            animation: stars 25s linear infinite;
+            opacity: 0.5;
+            z-index: 0;
+        }
 
-.profile-left {
-  left: 16px;
-  flex-direction: row;
-}
+        @keyframes stars {
+            from { transform: translateY(0) translateX(0); }
+            to { transform: translateY(-200px) translateX(-100px); }
+        }
 
-.profile-right {
-  right: 16px;
-  flex-direction: row-reverse;
-}
+        /* Back Button */
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000, 0 4px 0 #000;
+            padding: 10px 16px;
+            font-size: 10px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            text-decoration: none;
+            transition: all 0.1s;
+            z-index: 200;
+        }
 
-.profile-avatar {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  overflow: hidden;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-}
+        .back-btn:hover {
+            background: linear-gradient(180deg, #f87171 0%, #ef4444 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 0 0 4px #000, 0 6px 0 #000;
+        }
 
-.profile-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
+        /* Player Profiles */
+        .profile-container {
+            position: fixed;
+            top: 100px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 50;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 12px 16px;
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000;
+        }
 
-.profile-red {
-  border: 3px solid #ef4444;
-  box-shadow: 0 0 20px rgba(239, 68, 68, 0.8);
-  transform: scale(1.1);
-}
+        .profile-left {
+            left: 20px;
+            flex-direction: row;
+        }
 
-.profile-blue {
-  border: 3px solid #4169e1;
-  box-shadow: 0 0 20px rgba(65, 105, 225, 0.8);
-}
+        .profile-right {
+            right: 20px;
+            flex-direction: row-reverse;
+        }
 
-.profile-username {
-  font-size: 16px;
-  font-weight: 600;
-  color: #e6eef8;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-  white-space: nowrap;
-}
+        .profile-avatar {
+            width: 48px;
+            height: 48px;
+            border: 3px solid;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            background: rgba(0, 0, 0, 0.8);
+        }
 
-/* Game container - holds board and chat side by side on desktop */
-.game-wrapper {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-}
+        .profile-red .profile-avatar {
+            border-color: #ef4444;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+        }
 
-.suggestion-controls {
-    margin-bottom: 20px;
-}
+        .profile-blue .profile-avatar {
+            border-color: #3b82f6;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+        }
 
-.suggestion-button {
-    background-color: #4CAF50;
-    border: none;
-    color: white;
-    padding: 10px 20px;
-    text-align: center;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 16px;
-    margin: 4px 2px;
-    cursor: pointer;
-    border-radius: 4px;
-    transition: background-color 0.3s;
-}
+        .profile-avatar img {
+            display: none;
+        }
 
-.suggestion-button:hover {
-    background-color: #45a049;
-}
+        .profile-username {
+            font-size: 10px;
+            color: #fff;
+            text-shadow: 2px 2px 0 #000;
+        }
 
-.column-highlight {
-    animation: highlightPulse 1.5s infinite;
-}
+        /* Game Wrapper */
+        .game-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            position: relative;
+            z-index: 1;
+            padding: 200px 20px 20px 20px;
+            min-height: calc(100vh - 320px);
+        }
 
-@keyframes highlightPulse {
-    0% { background-color: rgba(255, 255, 0, 0.1); }
-    50% { background-color: rgba(255, 255, 0, 0.3); }
-    100% { background-color: rgba(255, 255, 0, 0.1); }
-}
+        /* Suggestion Button */
+        .suggestion-controls {
+            margin-bottom: 10px;
+        }
 
-.board-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 0;
-  width: 100%;
-}
+        .suggestion-button {
+            background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%);
+            color: #000;
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000, 0 4px 0 #000;
+            padding: 12px 20px;
+            font-size: 10px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            transition: all 0.1s;
+            text-transform: uppercase;
+        }
 
-.board-header {
-  margin-top: 20px;
-  margin-bottom: 20px;
-  text-align: center;
-}
+        .suggestion-button:hover {
+            background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 0 0 4px #000, 0 6px 0 #000;
+        }
 
-.board-header h1 {
-  margin: 0;
-  font-size: 2rem;
-  font-weight: 700;
-}
+        .suggestion-button:active {
+            transform: translateY(2px);
+            box-shadow: 0 0 0 4px #000, 0 2px 0 #000;
+        }
 
-.join-container {
-  display: flex;
-  position: absolute;
-  top: 05px;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
+        /* Board Container */
+        .board-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
 
-#turnIndicator {
-  position: relative;
-  margin: 20px auto 0 auto;
-  padding: 8px 14px;
-  border-radius: 20px;
-  font-weight: 600;
-  backdrop-filter: blur(6px);
-  background: rgba(255,255,255,0.04);
-  box-shadow: 0 6px 18px rgba(2,6,23,0.6);
-  z-index: 30;
-  display: inline-block;
-}
-#turnIndicator.red { color: #ff5858; border: 1px solid rgba(255,88,88,0.08); }
-#turnIndicator.blue { color: #4169e1; border: 1px solid rgba(255,210,77,0.08); }
+        .board-wrapper {
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            border: 6px solid #fff;
+            box-shadow: 0 0 0 6px #000, 0 8px 0 #000;
+            padding: 20px;
+        }
 
-#game-board { 
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(7, 60px);
+            grid-template-rows: repeat(6, 60px);
+            gap: 8px;
+            background: #000;
+            padding: 12px;
+            border: 4px solid #fff;
+        }
+
+        .cell {
+            width: 60px;
+            height: 60px;
+            background: #1a1a2e;
+            border: 3px solid #2d3748;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.1s;
+            position: relative;
+            image-rendering: pixelated;
+        }
+
+        .cell:hover {
+            background: #2d3748;
+            border-color: #4a5568;
+            transform: scale(1.05);
+        }
+
+        .cell.column-highlight {
+            animation: highlightPulse 1s infinite;
+        }
+
+        @keyframes highlightPulse {
+            0%, 100% { 
+                background: #fbbf24;
+                border-color: #fcd34d;
+            }
+            50% { 
+                background: #f59e0b;
+                border-color: #fbbf24;
+            }
+        }
+
+        .piece {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            image-rendering: pixelated;
+            animation: dropIn 0.3s ease-out;
+        }
+
+        @keyframes dropIn {
+            from {
+                transform: translateY(-400px) scale(0.8);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+
+        .piece img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            image-rendering: pixelated;
+        }
+
+        /* Turn Indicator */
+        #turnIndicator {
+            background: #000;
+            color: #fff;
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000;
+            padding: 12px 24px;
+            font-size: 12px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            min-width: 200px;
+        }
+
+        #turnIndicator.red {
+            border-color: #ef4444;
+            color: #ef4444;
+            animation: pulse 1s infinite;
+        }
+
+        #turnIndicator.blue {
+            border-color: #3b82f6;
+            color: #3b82f6;
+            animation: pulse 1s infinite;
+        }
+
+        #turnIndicator.gameover {
+            border-color: #fbbf24;
+            color: #fbbf24;
+            font-size: 14px;
+            animation: none;
+        }
+
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Chat Container - Fixed at Bottom */
+        .chat-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            border-top: 6px solid #fff;
+            box-shadow: 0 -8px 0 #000, 0 0 0 6px #000;
+            padding: 15px 20px;
+            display: flex;
+            flex-direction: column;
+            height: 300px;
+            z-index: 100;
+        }
+
+        .chat-container h2 {
+            font-size: 12px;
+            color: #fbbf24;
+            text-align: center;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        .chat-box {
+            flex: 1;
+            background: #000;
+            border: 3px solid #fff;
+            padding: 10px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            margin-bottom: 10px;
+            font-size: 8px;
+            line-height: 1.6;
+            max-height: 180px;
+        }
+
+        .chat-message {
+            margin-bottom: 8px;
+            word-wrap: break-word;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .chat-username {
+            font-weight: bold;
+        }
+
+        .chat-username-red {
+            color: #ef4444;
+        }
+
+        .chat-username-blue {
+            color: #3b82f6;
+        }
+
+        .chat-username-spectator {
+            color: #a0aec0;
+        }
+
+        .chat-input-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        #chatInput {
+            flex: 1;
+            background: #000;
+            color: #fff;
+            border: 3px solid #fff;
+            padding: 10px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 8px;
+        }
+
+        #chatInput:focus {
+            outline: none;
+            border-color: #fbbf24;
+        }
+
+        #sendBtn {
+            background: linear-gradient(180deg, #4ecdc4 0%, #44a08d 100%);
+            color: #fff;
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000, 0 4px 0 #000;
+            padding: 10px 20px;
+            font-size: 8px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            transition: all 0.1s;
+            white-space: nowrap;
+        }
+
+        #sendBtn:hover {
+            background: linear-gradient(180deg, #5eddd4 0%, #54b09d 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 0 0 4px #000, 0 6px 0 #000;
+        }
+
+        #sendBtn:active {
+            transform: translateY(2px);
+            box-shadow: 0 0 0 4px #000, 0 2px 0 #000;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            body {
+                padding-bottom: 280px;
+            }
+
+            .profile-container {
+                padding: 8px 12px;
+            }
+
+            .game-wrapper {
+                padding-top: 180px;
+            }
+
+            #game-board {
+                grid-template-columns: repeat(7, 45px);
+                grid-template-rows: repeat(6, 45px);
+                gap: 6px;
+            }
+
+            .cell {
+                width: 45px;
+                height: 45px;
+            }
+
+            .piece {
+                width: 38px;
+                height: 38px;
+            }
+
+            .chat-container {
+                height: 260px;
+                padding: 12px 15px;
+            }
+
+            .chat-box {
+                max-height: 140px;
+            }
+
+            #turnIndicator {
+                font-size: 10px;
+                padding: 10px 18px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #game-board {
+                grid-template-columns: repeat(7, 38px);
+                grid-template-rows: repeat(6, 38px);
+                gap: 4px;
+            }
+            .chat-container {
+                height: 180px;
+                padding: 10px 12px;
+                }
+
+                .chat-box {
+                max-height: 100px;
+                font-size: 7px;
+                }
+
+                #chatInput {
+                font-size: 7px;
+                padding: 8px;
+                }
+
+                #sendBtn {
+                padding: 8px 16px;
+                font-size: 7px;
+                }
+
+            .profile-container {
+            position: static;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+            width: 100%;
+            }
+
+            .profile-left,
+            .profile-right {
+            flex-direction: column;
+            align-items: center;
+            }
+
+            .cell {
+                width: 38px;
+                height: 38px;
+            }
+
+            .piece {
+                width: 32px;
+                height: 32px;
+            }
+        }
+        /* Modal animations and helper classes (moved from inline JS) */
+        .modal-anim-content { will-change: transform, opacity; }
+        .bounce { animation: modal-bounce 650ms cubic-bezier(.2,.9,.3,1); }
+        @keyframes modal-bounce {
+        0% { transform: scale(.85); opacity: 0 }
+        60% { transform: scale(1.05); opacity: 1 }
+        80% { transform: scale(.98) }
+        100% { transform: scale(1) }
+        }
+        .fade-in { animation: modal-fade 360ms ease-out; }
+        @keyframes modal-fade {
+        from { opacity: 0; transform: translateY(8px) }
+        to { opacity: 1; transform: translateY(0) }
+        }
+
+        /* Optional: basic modal overlay/content classes for easier theming */
+        .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: rgba(0,0,0,0.5);
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+        z-index: 9999;
+        }
+        .modal-content {
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        text-align: center;
+        min-width: 260px;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+.battleship-page .grid-board {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  grid-template-rows: repeat(6, 1fr);
-  gap: 8px;
-  padding: 18px;
-  background: linear-gradient(180deg, rgba(10,16,34,0.7), rgba(6,10,20,0.8));
-  border-radius: 12px;
-  box-shadow: 0 18px 60px rgba(2,6,23,0.6), inset 0 1px 0 rgba(255,255,255,0.02);
-  width: 90%;
-  max-width: 560px;
-  aspect-ratio: 7 / 6;
-  margin: 80px auto 0 auto;
-  position: relative;
+  grid-template-columns: repeat(10, 32px);
+  grid-template-rows: repeat(10, 32px);
+  gap: 4px;
+  padding: 12px;
+  background: #0f172a;
+  border: 6px solid #fff;
+  box-shadow: 0 0 0 6px #000, inset 0 0 20px rgba(0,0,0,0.4);
 }
 
-.cell {
-  width: 100%;
-  height: 100%;
-  aspect-ratio: 1;
-  background: radial-gradient(circle at 50% 40%, rgba(255,255,255,0.02), rgba(0,0,0,0.18));
-  margin: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease, border-color 120ms ease;
-  background-size: 100%;
-  background-repeat: no-repeat;
-  background-position: center;
-
-  /* Brighter visible border to distinguish cells */
-  border: 2px solid rgba(255, 255, 255, 0.459);
-  box-shadow: inset 0 -6px 18px rgba(0,0,0,0.25);
-  /* Add this line to curve the edges */
-  border-radius: 12px; /* or 50% for a perfect circle */
-
-}
-
-.cell.highlight {
-  box-shadow: inset 0 0 0 3px rgba(255,255,255,0.04), 0 10px 26px rgba(2,6,23,0.45);
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.08));
-  border-color: rgba(255,255,255,0.18); /* brighter border on hover/column highlight */
-}
-.piece {
-  width: 100%;
-  height: auto;
-  display: block;
-  transition: transform 360ms cubic-bezier(.22,.9,.11,1), opacity 180ms ease;
-  will-change: transform, opacity;
-  pointer-events: none;
-}
-.piece.red { filter: drop-shadow(0 6px 10px rgba(255,88,88,0.18)); }
-.piece.blue { filter: drop-shadow(0 6px 10px rgba(255,210,77,0.18)); }
-
-/* the hover is gonna be changed to make the column darker */
-.cell:hover {
-  background-image: #444444;
-  opacity: 0.5;
+.battleship-page .cell {
+  width: 32px;
+  height: 32px;
+  background: #1e293b;
+  border: 2px solid #334155;
   cursor: pointer;
 }
+.battleship-page .cell.ship { background: #0f766e; }
+.battleship-page .cell.hit { background: #dc2626; }
+.battleship-page .cell.miss { background: #94a3b8; }
 
-#turnIndicator.red {
-  color: #ff6b6b;
-  border: 1px solid rgba(255,107,107,0.16);
-  background: linear-gradient(180deg, rgba(255,107,107,0.04), rgba(0,0,0,0.04));
-}
-#turnIndicator.blue {
-  color: #4169e1;
-  border: 1px solid rgba(255,217,102,0.18);
-  background: linear-gradient(180deg, rgba(255,217,102,0.04), rgba(0,0,0,0.04));
-}
-
-/* Modal animations and helper classes (moved from inline JS) */
-.modal-anim-content { will-change: transform, opacity; }
-.bounce { animation: modal-bounce 650ms cubic-bezier(.2,.9,.3,1); }
-@keyframes modal-bounce {
-  0% { transform: scale(.85); opacity: 0 }
-  60% { transform: scale(1.05); opacity: 1 }
-  80% { transform: scale(.98) }
-  100% { transform: scale(1) }
-}
-.fade-in { animation: modal-fade 360ms ease-out; }
-@keyframes modal-fade {
-  from { opacity: 0; transform: translateY(8px) }
-  to { opacity: 1; transform: translateY(0) }
-}
-
-/* Optional: basic modal overlay/content classes for easier theming */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+.battleship-page .boards-wrapper {
   display: flex;
-  align-items: center;
+  gap: 40px;
   justify-content: center;
-  background-color: rgba(0,0,0,0.5);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  z-index: 9999;
+  margin-top: 20px;
+  flex-wrap: wrap;
 }
-.modal-content {
-  background: #fff;
-  padding: 20px;
-  border-radius: 8px;
+
+.battleship-page .board-section {
   text-align: center;
-  min-width: 260px;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
 }
-
-/* Falling disc animation styles */
-#game-board { position: relative; }
-.falling-disc {
-  position: absolute;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: center;
-  pointer-events: none;
-  transform: translateY(0) scale(1);
-}
-.falling-disc.animate {
-  transition: transform 300ms cubic-bezier(0.22,1,0.36,1);
-}
-.falling-disc.land-bounce {
-  transition: transform 140ms ease-out;
-  transform: translateY(var(--final)) scale(1.05);
-}
-.falling-disc.land-reset {
-  transition: transform 120ms ease-in-out;
-  transform: scale(1);
-}
-
-/* Chat container styles */
-.chat-container {
-  flex: 0 0 350px;
-  background: linear-gradient(180deg, rgba(10,16,34,0.7), rgba(6,10,20,0.8));
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 18px 60px rgba(2,6,23,0.6);
-  display: flex;
-  flex-direction: column;
-  height: 500px;
-  max-height: 500px;
-}
-
-.chat-container h2 {
-  margin: 0 0 15px 0;
-  font-size: 1.2rem;
-}
-
-.chat-box {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  background: rgba(0,0,0,0.2);
-  border-radius: 8px;
-  padding: 10px;
-  margin-bottom: 10px;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-}
-
-.chat-message {
-  padding: 8px 10px;
+.battleship-page .board-section h2 {
+  color: #4ecdc4;
+  font-size: 16px;
   margin-bottom: 8px;
-  background: transparent;
-  border-radius: 6px;
-  animation: fadeIn 0.3s ease-in;
-  word-wrap: break-word;
+  text-shadow: 2px 2px 0 #000;
 }
 
-.chat-username {
-  font-weight: 600;
+.battleship-page .status-bar {
+  display: flex;
+  justify-content: space-around;
+  padding: 12px;
+  background: rgba(255,255,255,0.05);
+  border-bottom: 2px solid #fff;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #fff;
 }
 
-.chat-username-red {
-  color: #ef4444;
-}
-
-.chat-username-blue {
-  color: #4169e1;
-}
-
-.chat-message.fade-out {
-  animation: fadeOut 0.5s ease-out forwards;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes fadeOut {
-  from {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-10px);
-    max-height: 0;
-    margin-bottom: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-  }
-}
-
-#chatInput {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid rgba(255,255,255,0.1);
-  background: rgba(0,0,0,0.3);
-  color: #e6eef8;
-  border-radius: 6px;
-  margin-bottom: 10px;
-  font-family: inherit;
-}
-
-#sendBtn {
-  width: 100%;
-  padding: 10px;
-  background: #4169e1;
-  color: white;
-  border: none;
-  border-radius: 6px;
+.battleship-page .pixel-btn {
+  background: linear-gradient(180deg, #4ecdc4 0%, #44a08d 100%);
+  border: 4px solid #fff;
+  box-shadow: 0 0 0 4px #000, 0 6px 0 #000;
+  font-family: 'Press Start 2P', cursive;
+  padding: 12px 16px;
+  margin: 8px;
   cursor: pointer;
-  font-weight: 600;
-  transition: background 0.2s;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: white;
+}
+.battleship-page .pixel-btn:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(180deg, #5eddd4 0%, #54b09d 100%);
+}
+.battleship-page .pixel-btn:active {
+  transform: translateY(2px);
 }
 
-#sendBtn:hover {
-  background: #3158c9;
-}
-
-/* MOBILE RESPONSIVE STYLES */
-@media (max-width: 768px) {
-  .profile-container {
-    top: 12px;
-  }
-
-  .profile-left {
-    left: 12px;
-  }
-
-  .profile-right {
-    right: 12px;
-  }
-
-  .profile-avatar {
-    width: 50px;
-    height: 50px;
-  }
-
-  .profile-username {
-    font-size: 14px;
-  }
-
-  .game-wrapper {
-    flex-direction: column;
-    padding: 15px;
-    gap: 20px;
-    height: 100vh;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
-  .board-container {
-    width: 100%;
-    order: 1;
-    padding: 0;
-  }
-
-  #game-board {
-    max-width: 100%;
-    width: 90%;
-    gap: 4px;
-    padding: 10px;
-    margin: 200px auto 0 auto;
-  }
-
-  #turnIndicator {
-    font-size: 14px;
-    padding: 6px 12px;
-    margin: 15px auto 0 auto;
-  }
-
-  .chat-container {
-    width: 90%;
-    margin: 0 auto;
-    flex: 0 0 auto;
-    order: 2;
-    height: 300px;
-    max-height: 300px;
-  }
-
-  .chat-box {
-    flex: 1;
-    min-height: 0;
-  }
-}
-
-/* Extra small screens */
-@media (max-width: 480px) {
-  .game-wrapper {
-    padding: 10px;
-  }
-
-  .board-container {
-    padding: 0;
-  }
-
-  #game-board {
-    gap: 2px;
-    padding: 8px;
-    width: 95%;
-  }
-
-  .cell {
-    border-width: 1px;
-  }
-
-  .chat-container {
-    height: 250px;
-    max-height: 250px;
-    padding: 15px;
-    width: 95%;
-  }
-
-  .chat-box {
-    flex: 1;
-    min-height: 0;
-  }
-
-  .chat-container h2 {
-    font-size: 1rem;
-  }
+.battleship-page .status-msg {
+  margin-top: 12px;
+  color: #fbbf24;
+  text-shadow: 2px 2px 0 #000;
+  font-size: 12px;
+  text-align: center;
 }
