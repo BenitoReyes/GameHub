@@ -245,12 +245,13 @@
             box-shadow: 0 0 0 4px #000, 0 2px 0 #000;
         }
 
-        /* Floating chips */
+        /* Floating chips (decorative only - don't capture pointer events) */
         .floating-chip {
             position: absolute;
             font-size: 30px;
             animation: float 3s ease-in-out infinite;
             z-index: 0;
+            pointer-events: none;
         }
 
         .chip-1 { top: 12%; left: 8%; animation-delay: 0s; }
@@ -407,9 +408,17 @@
         });
         });
 
-        // Redirect after join
-        socket.on('game-joined', ({ roomId, gameType }) => {
+        // Persist session info and redirect after join
+        socket.on('game-joined', ({ roomId, userId, token, role, username, gameType }) => {
         if (gameType === 'battleship') {
+            try {
+                sessionStorage.setItem('roomId', roomId);
+                if (userId) sessionStorage.setItem('userId', userId);
+                if (token) sessionStorage.setItem('token', token);
+                if (role) sessionStorage.setItem('role', role);
+                if (username) sessionStorage.setItem('username', username);
+                sessionStorage.setItem('gameType', gameType || 'battleship');
+            } catch (e) { console.warn('Failed to persist sessionStorage on join:', e); }
             window.location.href = `battleship.html?roomId=${roomId}`;
         }
         });

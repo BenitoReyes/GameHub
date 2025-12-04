@@ -20,12 +20,33 @@ const STREAM_SECRET = process.env.STREAM_SECRET;
 const serverClient = StreamChat.getInstance(STREAM_API_KEY, STREAM_SECRET);
 const PORT = process.env.PORT || 3000;
 const socketMeta = new Map();
+const userSockets = new Map(); // userId -> Set<socketId>
 const userRooms = new Map(); // userId -> Set<roomId>
 const roomOnlineUsers = new Map(); // roomId -> Set<userId>
 const disconnectTimers = new Map(); // userId -> Map<roomId, timeoutId>
 const deletingRooms = new Set(); // Set<roomId> - concurrent delete marker
 const recentRoomCreation = new Map(); // roomId -> timestamp (ms) to prevent immediate deletion on redirect
-const RECENT_ROOM_TTL_MS = 30000; // constant used in creation TTL and retry scheduling
+const RECENT_ROOM_TTL_MS = 60000; // increased to 60s (1 min) to avoid accidental deletion on quick reloads
+const LEAVE_GRACE_PERIOD_MS = 30000; // grace period for leave-game cleanup (allow faster rejoin)
+
+app.use(express.static('FrontEnd')); // Serve frontend files
+app.use(express.json()); // Middleware to parse JSON bodies
+app.use(express.urlencoded({ extended: true })); // parse form bodies if needed
+
+function setAuthCookies(res, userId, token) {
+  res.setHeader('Set-Cookie', [
+    cookie.serialize('userId', userId, {
+      httpOnly: false,
+      secure: false,
+      maxAge: 60 * 60 * 24,
+    }),
+    cookie.serialize('token', token, {
+      httpOnly: false,
+      secure: false,
+      maxAge: 60 * 60 * 24,
+    }),
+  ]);
+}
 
 // Helper - schedule a retry of cleanup after TTL expires if deletion was skipped due to recent creation
 async function attemptRoomCleanup(roomId, userId) {
@@ -95,7 +116,7 @@ async function forceLeaveRoom(userId, roomId) {
       const uname = user?.username || null;
       const rp = roomPlayers.get(roomId) || {};
       Object.keys(rp).forEach(k => { if (rp[k] === uname || rp[k] === undefined || rp[k] === null) delete rp[k]; });
-      io.to(roomId).emit('all-players-info', rp);
+      emitToRoom(roomId, 'all-players-info', rp);
     } catch (e) { /* ignore */ }
 
     // If the room is now empty, delete it (unless recent)
@@ -137,25 +158,6 @@ function scheduleRetryCleanupForUser(roomId, userId, delayMs) {
   disconnectTimers.set(userId, userTimers);
   return tid;
 }
-app.use(express.static('FrontEnd')); // Serve frontend files
-app.use(express.json()); // Middleware to parse JSON bodies
-app.use(express.urlencoded({ extended: true })); // parse form bodies if needed
-
-function setAuthCookies(res, userId, token) {
-  res.setHeader('Set-Cookie', [
-    cookie.serialize('userId', userId, {
-      httpOnly: false,
-      secure: false,
-      maxAge: 60 * 60 * 24,
-    }),
-    cookie.serialize('token', token, {
-      httpOnly: false,
-      secure: false,
-      maxAge: 60 * 60 * 24,
-    }),
-  ]);
-}
-
 function isAjax(req) {
   return (req.headers['x-requested-with'] || '').toLowerCase() === 'xmlhttprequest';
 }
@@ -233,9 +235,9 @@ app.post('/login', async (req, res) => {
 
 // Creating the system bot for temporary second player
 (async () => {
-  const serverClient = StreamChat.getInstance(STREAM_API_KEY, STREAM_SECRET);
   await serverClient.upsertUser({ id: 'system-bot', name: 'System Bot' });
 })();
+
 
 // Store room player information
 const roomPlayers = new Map(); // roomId -> { red: username, blue: username }
@@ -268,13 +270,28 @@ async function emitRoomList(socket = null, gameType = null) {
 async function safeDeleteRoom(roomId) {
   if (deletingRooms.has(roomId)) return;
   deletingRooms.add(roomId);
+
   try {
-    await prisma.roomParticipant.deleteMany({ where: { roomId } });
-  } catch (e) { /* ignore */ }
-  try {
-    await prisma.room.delete({ where: { id: roomId } });
-    console.log(`safeDeleteRoom: deleted ${roomId}`);
-    // Clean up in-memory maps to avoid leaking state
+    // Remove participants from DB
+    try {
+      await prisma.roomParticipant.deleteMany({ where: { roomId } });
+    } catch (err) {
+      console.warn(`safeDeleteRoom: failed to delete participants for ${roomId}`, err.message);
+    }
+
+    // Delete the room record
+    try {
+      await prisma.room.delete({ where: { id: roomId } });
+      console.log(`safeDeleteRoom: deleted room ${roomId}`);
+    } catch (err) {
+      if (err?.code === 'P2025') {
+        console.warn(`safeDeleteRoom: room ${roomId} already deleted`);
+      } else {
+        console.error(`safeDeleteRoom: failed to delete room ${roomId}`, err);
+      }
+    }
+
+    // Clean up in‑memory maps
     try {
       const rset = roomOnlineUsers.get(roomId);
       if (rset && rset.size > 0) {
@@ -288,17 +305,76 @@ async function safeDeleteRoom(roomId) {
       }
       roomOnlineUsers.delete(roomId);
       roomPlayers.delete(roomId);
-    } catch (err) { /* ignore */ }
-  } catch (e) {
-    if (e?.code === 'P2025') {
-      console.warn(`safeDeleteRoom: room ${roomId} already deleted`);
-    } else {
-      console.error('safeDeleteRoom: failed to delete room', e);
+    } catch (err) {
+      console.error(`safeDeleteRoom: failed to clean in‑memory maps for ${roomId}`, err);
     }
+
+    // Delete Stream channel to avoid orphaned chats
+    try {
+      const channel = serverClient.channel('messaging', roomId);
+      await channel.delete();
+      console.log(`safeDeleteRoom: deleted Stream channel for room ${roomId}`);
+    } catch (err) {
+      console.warn(`safeDeleteRoom: Stream channel delete failed for ${roomId}`, err.message);
+    }
+
   } finally {
     deletingRooms.delete(roomId);
   }
 }
+
+
+function emitToRoom(roomId, event, payload) {
+  const userIds = roomOnlineUsers.get(roomId) || new Set();
+  const targets = [];
+  for (const uid of userIds) {
+    const sockets = userSockets.get(uid) || new Set();
+    for (const sid of sockets) targets.push(sid);
+  }
+  console.log(`[emitToRoom] ${event} -> room ${roomId} users=${userIds.size} sockets=${targets.length}`);
+  for (const sid of targets) io.to(sid).emit(event, payload);
+}
+
+function emitToRoomExcept(roomId, exceptUserId, event, payload) {
+  const userIds = roomOnlineUsers.get(roomId) || new Set();
+  const targets = [];
+  for (const uid of userIds) {
+    if (uid === exceptUserId) continue;
+    const sockets = userSockets.get(uid) || new Set();
+    for (const sid of sockets) targets.push(sid);
+  }
+  console.log(`[emitToRoomExcept] ${event} -> room ${roomId} excluding ${exceptUserId} sockets=${targets.length}`);
+  for (const sid of targets) io.to(sid).emit(event, payload);
+}
+
+
+async function removeUserFromRoom(userId, roomId) {
+  const urs = userRooms.get(userId);
+  if (urs) {
+    urs.delete(roomId);
+    if (urs.size === 0) userRooms.delete(userId);
+  }
+  const rset = roomOnlineUsers.get(roomId);
+  if (rset) {
+    const hadUser = rset.delete(userId);
+    if (hadUser) {
+      try {
+        const roomAfter = await prisma.room.update({
+          where: { id: roomId },
+          data: { inRoom: { decrement: 1 } },
+          select: { inRoom: true }
+        });
+        if (roomAfter.inRoom < 0) {
+          await prisma.room.update({ where: { id: roomId }, data: { inRoom: 0 } });
+        }
+      } catch (e) {
+        if (e?.code !== 'P2025') console.error('removeUserFromRoom: decrement failed', e);
+      }
+    }
+    if (rset.size === 0) roomOnlineUsers.delete(roomId);
+  }
+}
+
 
 //once the backend and frontend are connected via socket.io, at the very start of the projects lifecycle
 // Initialize games loader before socket connection handling
@@ -358,129 +434,211 @@ setInterval(async () => {
   } catch (err) { console.error('Error during periodic room sweep', err); }
 }, 10000); // every 10s
 
-io.on('connection', async (socket) => {
-  // Send the latest room-list to the newly-connected socket immediately
-  try { await emitRoomList(socket); } catch (e) { console.error('emitRoomList failed on new connection', e); }
-    var cookies = cookie.parse(socket.handshake.headers.cookie || '');
-    const userId = cookies.userId;
-    socket.on('create-game', async ({ gameType } = {}) => {
+io.on('connection', (socket) => {
+  const cookies = cookie.parse(socket.handshake.headers.cookie || '');
+  const userId = cookies.userId;
+  if (!userId) {
+    console.warn('Connection without userId, ignoring');
+    return;
+  }
+
+  // Register this socket under the user
+  const sset = userSockets.get(userId) || new Set();
+  sset.add(socket.id);
+  userSockets.set(userId, sset);
+  console.log(`Registered socket ${socket.id} for user ${userId}`);
+
+  // Rejoin any rooms this user is already in
+  const rooms = userRooms.get(userId);
+  if (rooms) {
+    for (const roomId of rooms) {
+      socket.join(roomId); // critical: ensures new socket is in the room
+      const rset = roomOnlineUsers.get(roomId) || new Set();
+      rset.add(userId);
+      roomOnlineUsers.set(roomId, rset);
+      console.log(`Rejoined socket ${socket.id} to room ${roomId} for user ${userId}`);
+    }
+  }
+
+  socket.on('create-game', async ({ gameType } = {}) => {
+    if (!userId) { socket.emit('error', 'Not authenticated'); return; }
+
+    const game = getGame(gameType);
+    if (!game) { socket.emit('error', 'Invalid game type'); return; }
+
+    // Relaxed guard: accept any valid initial state
+    const initialState = game.getInitialState?.();
+    if (!initialState) {
+      socket.emit('error', 'Game failed to initialize');
+      return;
+    }
+
+    const roomId = crypto.randomUUID();
+
+    // Create room in DB
+    await prisma.room.create({
+      data: {
+        id: roomId,
+        host: { connect: { id: userId } },
+        isPublic: true,
+        board: initialState,
+        gameType: game.name,
+        inRoom: 1
+      }
+    });
+
+    // Explicitly mark host as HOST participant
+    await prisma.roomParticipant.upsert({
+      where: { userId_roomId: { userId, roomId } },
+      create: { roomId, userId, permission: 'HOST' },
+      update: { permission: 'HOST' }
+    });
+
+    // Presence tracking
+    if (!userRooms.has(userId)) userRooms.set(userId, new Set());
+    userRooms.get(userId).add(roomId);
+    if (!roomOnlineUsers.has(roomId)) roomOnlineUsers.set(roomId, new Set());
+    roomOnlineUsers.get(roomId).add(userId);
+
+    socket.join(roomId);
+
+    // Players map
+    if (!roomPlayers.has(roomId)) roomPlayers.set(roomId, {});
+    const pList = roomPlayers.get(roomId);
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    pList['red'] = user.username; // host always red
+
+    emitToRoom(roomId, 'all-players-info', pList);
+    socket.emit('assign-role', 'red');
+    emitToRoom(roomId, 'sync-board', initialState);
+
+    socket.emit('game-created', {
+      roomId,
+      userId,
+      role: 'red',
+      username: user.username,
+      gameType: game.name
+    });
+
+    // Create Stream channel for this room
+    const channel = serverClient.channel('messaging', roomId, {
+      created_by_id: userId,
+      members: [userId],
+    });
+    await channel.create();
+  });
+
+
+
+    socket.on('join-game', async (roomId) => {
       if (!userId) { socket.emit('error', 'Not authenticated'); return; }
-      const roomId = v4().slice(0,8); // generate a unique room ID
       const token = serverClient.createToken(userId);
-      const game = getGame(gameType) || getGame('drop4');
-      const initialState = game && typeof game.getInitialState === 'function' ? game.getInitialState() : Array.from({ length: 6 }, () => Array(7).fill(0));
-      await prisma.room.create({
-        data: { id: roomId, host: {connect: {id:userId}}, isPublic: true, board: initialState, gameType: game?.name || 'drop4', inRoom: 1 }
-      });
-      // record recent creation time to avoid deleting during redirect/client reload
-      recentRoomCreation.set(roomId, Date.now());
-      // Schedule cleanup of this marker after 30s
-      setTimeout(() => recentRoomCreation.delete(roomId), 30000);
-      await prisma.user.update({
-        where: { id: userId },
-        data: { rooms: { connect: {id:roomId }} }
-      });
-      await prisma.roomParticipant.create({
-        data: { roomId: roomId, userId: userId, permission: 'HOST'}
-      });
-      console.log(`RoomParticipant created for host ${userId} in room ${roomId}`);
-      let participant = await prisma.roomParticipant.findUnique({
-        where: { userId_roomId : { userId, roomId } }
-      });
-      
-      await prisma.room.update({
+
+      // Fetch room and participants
+      const room = await prisma.room.findFirst({
         where: { id: roomId },
-        data: {participants: {connect: { id: participant.id }}}
+        include: { participants: true },
+        orderBy: { createdAt: 'desc' }
       });
-      const channel = serverClient.channel('messaging', roomId, {
-        members: [userId, 'system-bot'],
-        name: 'Game Chat',
-        created_by_id: userId
+      if (!room) { socket.emit('error', 'Room not found'); return; }
+
+      const game = getGame(room.gameType);
+      if (!game) { socket.emit('error', 'Game module not found'); return; }
+
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      const username = user.username;
+
+      // Determine role/permission
+      let role, permission;
+      let participant = await prisma.roomParticipant.findUnique({
+        where: { userId_roomId: { userId, roomId } }
       });
-      // Wait for the channel to be created and watched
-      let user = await prisma.user.findUnique({
-        where: {id: userId}
-      });
-      let username = user.username;
-      await channel.create();
-      await channel.watch();
-      socket.join(roomId);
-      // Mark socket meta for this socket (so we can map socket->room if needed for socket-level events)
-      socketMeta.set(socket.id, { roomId });
-      // If this user has other active rooms, force them to leave those rooms to avoid orphaned rooms
-      try {
-        const prev = userRooms.get(userId) || new Set();
-        for (const r of Array.from(prev)) {
-          if (r !== roomId) {
-            await forceLeaveRoom(userId, r);
-          }
+
+      if (!participant) {
+        if (room.hostId === userId) {
+          // Ensure host is always red
+          role = 'red';
+          permission = 'HOST';
+        } else if (room.participants.length >= 2) {
+          role = 'spectator';
+          permission = 'SPECTATOR';
+        } else {
+          role = 'blue';
+          permission = 'PLAYER';
         }
-      } catch (e) { console.error('create-game: failed to force leave previous rooms', e); }
-      // Track the user->room and room->user mappings for unique-user inRoom accounting
+      } else {
+        if (participant.permission === 'HOST') { role = 'red'; permission = 'HOST'; }
+        else if (participant.permission === 'PLAYER') { role = 'blue'; permission = 'PLAYER'; }
+        else { role = 'spectator'; permission = 'SPECTATOR'; }
+      }
+
+      // Upsert participant record
+      await prisma.roomParticipant.upsert({
+        where: { userId_roomId: { userId, roomId } },
+        create: { roomId, userId, permission },
+        update: { permission }
+      });
+
+      // Assign role to client
+      socket.emit('assign-role', role);
+      socket.join(roomId);
+
+      // Force leave other rooms
+      const prev = userRooms.get(userId) || new Set();
+      for (const r of Array.from(prev)) {
+        if (r !== roomId) await forceLeaveRoom(userId, r);
+      }
+
+      // Cancel disconnect timers
+      const timers = disconnectTimers.get(userId);
+      if (timers && timers.has(roomId)) {
+        clearTimeout(timers.get(roomId));
+        timers.delete(roomId);
+        if (timers.size === 0) disconnectTimers.delete(userId);
+        console.log(`join-game: canceled disconnect cleanup for ${userId} in ${roomId}`);
+      }
+
+      // Update players map
+      if (!roomPlayers.has(roomId)) roomPlayers.set(roomId, {});
+      const rp = roomPlayers.get(roomId);
+      if (role === 'red' || role === 'blue') rp[role] = username;
+      emitToRoom(roomId, 'all-players-info', rp);
+
+      // Send join confirmation
+      socket.emit('game-joined', {
+        roomId,
+        userId,
+        token,
+        role,
+        username,
+        gameType: room.gameType
+      });
+
+      // Sync board
+      emitToRoom(roomId, 'sync-board', room.board);
+      await emitRoomList();
+
+      // Ensure Stream channel exists and add member
+      const channel = serverClient.channel('messaging', roomId, {
+        created_by_id: room.hostId || userId, // host recorded as creator
+      });
+      await channel.watch(); // creates if missing
+      await channel.addMembers([userId]);
+
+      // Presence tracking
       if (!userRooms.has(userId)) userRooms.set(userId, new Set());
       userRooms.get(userId).add(roomId);
       if (!roomOnlineUsers.has(roomId)) roomOnlineUsers.set(roomId, new Set());
       roomOnlineUsers.get(roomId).add(userId);
-      // Record host name locally to manage in-memory player list and broadcast to room
-      if (!roomPlayers.has(roomId)) roomPlayers.set(roomId, {});
-      const pList = roomPlayers.get(roomId);
-      pList['red'] = username;
-      io.to(roomId).emit('all-players-info', pList);
-      socket.emit('assign-role', 'red');
-      console.log(`assign-role emitted to host ${userId} as 'red' for room ${roomId}`);
-      // Immediately send the initial board to the creator to reduce race conditions
-      try { socket.emit('sync-board', initialState); } catch (e) { console.error('Failed to emit sync-board to creator:', e); }
-      // In-room is initialized to 1 in DB on creation and mapped in roomOnlineUsers above.
-      try { await emitRoomList(); } catch (e) { /* ignore */ }
-      socket.emit('game-created', {roomId, userId, token, role:'red', username, gameType: game?.name || 'drop4'});
-      console.log(`game-created emitted to host for room ${roomId}`);
-      console.log(`Room created: ${roomId} (gameType: ${game?.name || 'drop4'}) by user ${userId}`);
-      try { await emitRoomList(); } catch (e) { console.error('emitRoomList failed after create-game', e); }
-      //players.push(socket.id);
-    });
 
-    socket.on('join-room', async (roomId) => {
-      if (!userId) { socket.emit('error', 'Not authenticated'); return; }
-      socket.join(roomId);
-      socketMeta.set(socket.id, {roomId});
-      // Recomputing the inRoom count for the room based on connected sockets
-      const userTimers = disconnectTimers.get(userId);
-      if (userTimers && userTimers.has(roomId)) {
-        const timeoutId = userTimers.get(roomId);
-        clearTimeout(timeoutId);
-        userTimers.delete(roomId);
-        if (userTimers.size === 0) disconnectTimers.delete(userId);
-        console.log(`Reconnected: canceled cleanup for user ${userId} for room ${roomId}`);
-      } else if (userTimers && userTimers.size > 0) {
-        console.log(`User ${userId} rejoined a different room (${roomId}), existing pending cleanup(s) remain for other rooms`);
-      }
-
-      // Update inRoom via unique user presence maps. Avoid double-counting across multiple sockets.
+      // Update DB inRoom count
       try {
-        if (!userRooms.has(userId)) userRooms.set(userId, new Set());
-        const userRoomSetJM = userRooms.get(userId);
-        if (!userRoomSetJM.has(roomId)) {
-          userRoomSetJM.add(roomId);
-          if (!roomOnlineUsers.has(roomId)) roomOnlineUsers.set(roomId, new Set());
-          const rset = roomOnlineUsers.get(roomId);
-          if (!rset.has(userId)) {
-            rset.add(userId);
-            try {
-              const roomAfter = await prisma.room.update({ where: { id: roomId }, data: { inRoom: { increment: 1 } }, select: { inRoom: true } });
-              console.log(`join-room: updated inRoom for ${roomId} to ${roomAfter.inRoom} after join by ${userId}`);
-            } catch (e) {
-              if (e?.code === 'P2025') {
-                console.warn(`join-room: room ${roomId} does not exist when updating inRoom (skipping)`);
-              } else {
-                console.error('join-room: failed to update inRoom', e);
-              }
-            }
-          }
-        }
+        const rset = roomOnlineUsers.get(roomId) || new Set();
+        await prisma.room.update({ where: { id: roomId }, data: { inRoom: rset.size } });
+        console.log(`join-game: updated inRoom for ${roomId} to ${rset.size}`);
       } catch (err) {
-        console.error('join-room: failed to update inRoom via roomOnlineUsers:', err);
+        console.error('join-game: failed to update inRoom', err);
       }
-      console.log(`Socket ${socket.id} joined room ${roomId}`);
     });
 
     // Handle player joining with username
@@ -497,7 +655,7 @@ io.on('connection', async (socket) => {
       }
       
       // Broadcast all current players to everyone in the room
-      io.to(roomId).emit('all-players-info', players);
+      emitToRoom(roomId, 'all-players-info', players);
       // Update server-side presence maps to ensure inRoom reflects unique users
       try {
         if (!userRooms.has(userId)) userRooms.set(userId, new Set());
@@ -545,10 +703,10 @@ io.on('connection', async (socket) => {
         include: { participants: true },
         orderBy: { createdAt: 'desc' }
       });
-      if (!room) {
-        socket.emit('error', 'Room not found');
-        return;
-      }
+      if (!room) { socket.emit('error', 'Room not found'); return; }
+      const game = getGame(room.gameType);
+      if (!game) { socket.emit('error', 'Game module not found'); return; }
+
       const roomPartnum = room.participants.length || 0;
       const user = await prisma.user.findUnique({
         where: { id: userId }
@@ -586,7 +744,7 @@ io.on('connection', async (socket) => {
       });
       console.log(`RoomParticipant upsert for user ${userId} in room ${roomId} with permission ${permission}`);
       socket.emit('assign-role', role);
-      console.log(`Emitting assign-role to user ${userId} -> ${role} for room ${roomId}`);
+      console.log(`Emitting assign-role to user ${userId} -> ${role} for room ${roomId} (socket ${socket.id})`);
       socket.join(roomId);
       // NOTE: inRoom increment is handled on 'join-room' to avoid double-counting
       socketMeta.set(socket.id, { roomId });
@@ -606,14 +764,21 @@ io.on('connection', async (socket) => {
         clearTimeout(timeoutId);
         userTimersJoin.delete(roomId);
         if (userTimersJoin.size === 0) disconnectTimers.delete(userId);
-        console.log(`Reconnected via join-game: canceled cleanup for user ${userId} for room ${roomId}`);
-      } else if (userTimersJoin && userTimersJoin.size > 0) {
-        console.log(`User ${userId} rejoined a different room (${roomId}), existing pending cleanup(s) remain for other rooms`);
+        console.log(`Reconnected via join-game: canceled disconnect cleanup for user ${userId} for room ${roomId}`);
+      }
+      // Also cancel any pending leave-game timeout for this user/room
+      const userLeaveTimersJoin = disconnectTimers.get(userId);
+      if (userLeaveTimersJoin && userLeaveTimersJoin.has(roomId)) {
+        const leaveTimeoutId = userLeaveTimersJoin.get(roomId);
+        clearTimeout(leaveTimeoutId);
+        userLeaveTimersJoin.delete(roomId);
+        if (userLeaveTimersJoin.size === 0) disconnectTimers.delete(userId);
+        console.log(`Reconnected via join-game: canceled leave-game cleanup for user ${userId} for room ${roomId}`);
       }
       if (!roomPlayers.has(roomId)) roomPlayers.set(roomId, {});
       const rp = roomPlayers.get(roomId);
       if (role === 'red' || role === 'blue') rp[role] = username;
-      io.to(roomId).emit('all-players-info', rp);
+      emitToRoom(roomId,  'all-players-info', rp);
       // include gameType for the redirecting client
       const joinRoom = await prisma.room.findUnique({ where: { id: roomId }, select: { gameType: true } });
       socket.emit('game-joined', { roomId, userId, token, role, username, gameType: joinRoom?.gameType || 'drop4' });
@@ -659,12 +824,23 @@ io.on('connection', async (socket) => {
       }
     });
 
+    // client-side handshake to ensure socket listener registration before sending authoritative board
+    socket.on('ready-for-sync', async (roomId) => {
+      try {
+        const room = await prisma.room.findUnique({ where: { id: roomId }, select: { board: true } });
+        console.log(`ready-for-sync: sending board to socket ${socket.id} for room ${roomId}`);
+        if (room) socket.emit('sync-board', room.board);
+      } catch (e) {
+        console.error('ready-for-sync handler error:', e);
+      }
+    });
+
     socket.on('getScores', async (roomId) => {
       const room = await prisma.room.findUnique({
         where: { id: roomId },
         select: { redScore: true, blueScore: true }
       });
-      io.to(roomId).emit('scoreUpdate', { redScore:room.redScore, blueScore:room.blueScore });
+      emitToRoom(roomId,  'scoreUpdate', { redScore:room.redScore, blueScore:room.blueScore });
     });
 
     socket.on('incrementRedScore', async (roomId) => {
@@ -674,7 +850,7 @@ io.on('connection', async (socket) => {
         select: { redScore: true }
       });
       try {
-        io.to(roomId).emit('scoreUpdate', { redScore: room.redScore, blueScore: (await prisma.room.findUnique({ where: { id: roomId }, select: { blueScore: true } })).blueScore });
+        emitToRoom(roomId,  'scoreUpdate', { redScore: room.redScore, blueScore: (await prisma.room.findUnique({ where: { id: roomId }, select: { blueScore: true } })).blueScore });
       } catch (e) { console.error('Failed to broadcast scoreUpdate for red increment', e); }
     });
 
@@ -685,7 +861,7 @@ io.on('connection', async (socket) => {
         select: { blueScore: true }
       });
       try {
-        io.to(roomId).emit('scoreUpdate', { blueScore: room.blueScore, redScore: (await prisma.room.findUnique({ where: { id: roomId }, select: { redScore: true } })).redScore });
+        emitToRoom(roomId,  'scoreUpdate', { blueScore: room.blueScore, redScore: (await prisma.room.findUnique({ where: { id: roomId }, select: { redScore: true } })).redScore });
       } catch (e) { console.error('Failed to broadcast scoreUpdate for blue increment', e); }
     });
 
@@ -694,9 +870,9 @@ io.on('connection', async (socket) => {
       await emitRoomList(socket, gameType);
     });
 
-    socket.on('make-move', async ({data, roomId}) => {
+    socket.on('make-move', async ({ data, roomId }) => {
       console.log(`Move received in room ${roomId}:`, data);
-      // Determine current turn by counting existing pieces
+
       function determineCurrentPlayer(board) {
         let redCount = 0, blueCount = 0;
         for (let r = 0; r < board.length; r++) {
@@ -707,118 +883,103 @@ io.on('connection', async (socket) => {
         }
         return redCount <= blueCount ? 'red' : 'blue';
       }
-      // Fetch current board
+
       const room = await prisma.room.findUnique({
         where: { id: roomId },
         select: { board: true, gameType: true }
       });
-      if (!room || !room.board) {
-        console.error(`Room ${roomId} not found or board missing`);
-        return;
-      }
-      // Update board using the relevant game module
+      if (!room || !room.board) return;
+
       const board = room.board;
       const game = getGame(room.gameType) || getGame('drop4');
       let newBoard;
-      // Server-side role/turn enforcement
-      try {
-        // find username for this userId to cleanup roomPlayers map
-        let username = null;
-        try {
-          const user = await prisma.user.findUnique({ where: { id: userId }, select: { username: true } });
-          username = user?.username || null;
-        } catch (err) {
-          console.warn('Could not find user for leave-game cleanup', userId, err);
-        }
-        const participant = await prisma.roomParticipant.findUnique({ where: { userId_roomId: { userId, roomId } } });
-        let role = 'spectator';
-        if (participant) {
-          if (participant.permission === 'HOST') role = 'red';
-          else if (participant.permission === 'PLAYER') role = 'blue';
-        }
-        const currentTurn = determineCurrentPlayer(board);
-        console.log(`User ${userId} role=${role} currentTurn=${currentTurn}`);
-        if (role !== currentTurn) {
-          console.warn(`Move rejected: user role (${role}) does not match current turn (${currentTurn})`);
-          socket.emit('action-error', { message: `Not your turn (expected ${currentTurn})` });
-          return;
-        }
-      } catch (err) {
-        console.error('Error validating turn enforcement:', err);
-        socket.emit('action-error', { message: 'Server error validating turn' });
-        return;
+
+      // Turn enforcement
+      const participant = await prisma.roomParticipant.findUnique({ where: { userId_roomId: { userId, roomId } } });
+      let role = 'spectator';
+      if (participant) {
+        if (participant.permission === 'HOST') role = 'red';
+        else if (participant.permission === 'PLAYER') role = 'blue';
       }
-      try {
-        if (game && typeof game.validateAction === 'function') {
-          const valid = game.validateAction(board, data, { userId });
-          if (!valid) {
-            console.warn('Invalid action detected, rejected.');
-            socket.emit('action-error', { message: 'Invalid move' });
-            return;
-          }
-        }
-        if (game && typeof game.applyAction === 'function') {
-          newBoard = game.applyAction(board, data, { userId });
-        } else {
-          // fallback: basic array update (legacy behavior)
-          const fallback = board.map(r => r.slice());
-          fallback[data.row][data.col] = data.player;
-          newBoard = fallback;
-        }
-      } catch (err) {
-        console.error('Error applying action:', err);
+      const currentTurn = determineCurrentPlayer(board);
+      if (role !== currentTurn) {
+        socket.emit('action-error', { message: `Not your turn (expected ${currentTurn})` });
         return;
       }
 
-      // Save updated board to DB and eval winner via module
-      const updated = await prisma.room.update({ where: { id: roomId }, data: { board: newBoard }, select: { id: true, board: true, redScore: true, blueScore: true, gameType: true } });
-      // Keep board in sync in the room
-      io.to(roomId).emit('sync-board', newBoard);
-      // Send opponent-move to other clients (not to the actor)
-      socket.to(roomId).emit('opponent-move', data);
-
-      // detect winner/draw using game's module if exported
-      try {
-        const gameResult = game && typeof game.getResult === 'function' ? game.getResult(newBoard) : null;
-        if (gameResult) {
-          if (gameResult.winner) {
-            // increment DB score for winner inside server atomically
-            if (gameResult.winner === 'red') {
-              const roomScore = await prisma.room.update({ where: { id: roomId }, data: { redScore: { increment: 1 } }, select: { redScore: true, blueScore: true } });
-              io.to(roomId).emit('game-over', { winner: 'red', board: newBoard, redScore: roomScore.redScore, blueScore: roomScore.blueScore });
-            } else {
-              const roomScore = await prisma.room.update({ where: { id: roomId }, data: { blueScore: { increment: 1 } }, select: { redScore: true, blueScore: true } });
-              io.to(roomId).emit('game-over', { winner: 'blue', board: newBoard, redScore: roomScore.redScore, blueScore: roomScore.blueScore });
-            }
-          } else if (gameResult.draw) {
-            io.to(roomId).emit('game-over', { winner: null, draw: true, board: newBoard, redScore: updated.redScore, blueScore: updated.blueScore });
-          }
-        }
-      } catch (err) {
-        console.error('Error while computing game result after move:', err);
+      // Apply action
+      if (game?.validateAction && !game.validateAction(board, data, { userId })) {
+        socket.emit('action-error', { message: 'Invalid move' });
+        return;
       }
-      try { await emitRoomList(); } catch (e) { /* ignore */ }
+      newBoard = game?.applyAction ? game.applyAction(board, data, { userId }) : board;
+
+      const updated = await prisma.room.update({
+        where: { id: roomId },
+        data: { board: newBoard },
+        select: { id: true, board: true, redScore: true, blueScore: true, gameType: true }
+      });
+
+      // Broadcast board
+      emitToRoom(roomId, 'sync-board', newBoard);
+
+      // Send opponent move to everyone except actor
+      emitToRoomExcept(roomId, userId, 'opponent-move', data);
+
+      // Detect winner/draw
+      const gameResult = game?.getResult ? game.getResult(newBoard) : null;
+      if (gameResult) {
+        if (gameResult.winner) {
+          const winner = gameResult.winner;
+          const roomScore = await prisma.room.update({
+            where: { id: roomId },
+            data: winner === 'red' ? { redScore: { increment: 1 } } : { blueScore: { increment: 1 } },
+            select: { redScore: true, blueScore: true }
+          });
+          emitToRoom(roomId, 'game-over', { winner, board: newBoard, redScore: roomScore.redScore, blueScore: roomScore.blueScore });
+        } else if (gameResult.draw) {
+          emitToRoom(roomId, 'game-over', { winner: null, draw: true, board: newBoard, redScore: updated.redScore, blueScore: updated.blueScore });
+        }
+      }
+
+      await emitRoomList();
     });
+
 
     // Battleship-specific handlers
     socket.on('place-ships', async ({ roomId, layout } = {}) => {
       if (!userId) { socket.emit('action-error', { message: 'Not authenticated' }); return; }
+
       try {
         const room = await prisma.room.findUnique({ where: { id: roomId }, select: { board: true, gameType: true } });
         if (!room) { socket.emit('action-error', { message: 'Room not found' }); return; }
+
         const game = getGame(room.gameType);
         if (!game) { socket.emit('action-error', { message: 'Game module not found' }); return; }
-        // Determine player role from participant entry
+
         const participant = await prisma.roomParticipant.findUnique({ where: { userId_roomId: { userId, roomId } } });
         if (!participant) { socket.emit('action-error', { message: 'Not a participant' }); return; }
+
         const role = participant.permission === 'HOST' ? 'red' : (participant.permission === 'PLAYER' ? 'blue' : 'spectator');
         if (role === 'spectator') { socket.emit('action-error', { message: 'Spectator cannot place ships' }); return; }
+
         const action = { type: 'place', color: role, layout };
-        if (!game.validateAction(room.board, action)) { socket.emit('action-error', { message: 'Invalid ship layout' }); return; }
+        if (!game.validateAction(room.board, action)) {
+          socket.emit('action-error', { message: 'Invalid ship layout' });
+          return;
+        }
+
         const res = game.applyAction(room.board, action, { userId, role });
-        const newBoard = res && res.board ? res.board : res;
+        const newBoard = res?.board || res;
+
         await prisma.room.update({ where: { id: roomId }, data: { board: newBoard } });
-        io.to(roomId).emit('sync-board', newBoard);
+        const updatedRoom = await prisma.room.findUnique({ where: { id: roomId }, select: { board: true } });
+
+        // Log presence from your own maps
+        const userIds = roomOnlineUsers.get(roomId) || new Set();
+        console.log(`[PLACE-SHIPS] sync-board targets for room ${roomId}: users=${userIds.size}`);
+
+        emitToRoom(roomId, 'sync-board', updatedRoom.board);
         socket.emit('placed-ships', { success: true });
       } catch (err) {
         console.error('place-ships handler error:', err);
@@ -828,32 +989,54 @@ io.on('connection', async (socket) => {
 
     socket.on('attack', async ({ roomId, x, y } = {}) => {
       if (!userId) { socket.emit('action-error', { message: 'Not authenticated' }); return; }
+
       try {
         const room = await prisma.room.findUnique({ where: { id: roomId }, select: { board: true, gameType: true } });
         if (!room) { socket.emit('action-error', { message: 'Room not found' }); return; }
+
         const game = getGame(room.gameType);
         if (!game) { socket.emit('action-error', { message: 'Game module not found' }); return; }
+
         const participant = await prisma.roomParticipant.findUnique({ where: { userId_roomId: { userId, roomId } } });
         if (!participant) { socket.emit('action-error', { message: 'Not a participant' }); return; }
+
         const role = participant.permission === 'HOST' ? 'red' : (participant.permission === 'PLAYER' ? 'blue' : 'spectator');
         if (role === 'spectator') { socket.emit('action-error', { message: 'Spectator cannot attack' }); return; }
+
         const action = { type: 'attack', x, y, player: role };
-        if (!game.validateAction(room.board, action)) { socket.emit('action-error', { message: 'Invalid attack' }); return; }
+        if (!game.validateAction(room.board, action)) {
+          socket.emit('action-error', { message: 'Invalid attack' });
+          return;
+        }
+
         const res = game.applyAction(room.board, action, { userId, role });
-        const newBoard = res && res.board ? res.board : res;
-        const details = res && res.details ? res.details : { hit: false, sunk: null };
-        const updatedRoom = await prisma.room.update({ where: { id: roomId }, data: { board: newBoard }, select: { redScore: true, blueScore: true, board: true } });
-        io.to(roomId).emit('sync-board', newBoard);
-        // emit attack-result to all in room for UI feedback; actor gets immediate message as well
-        io.to(roomId).emit('attack-result', details);
-        // check for winner and emit game-over
-        try {
-          const result = game.getResult(newBoard);
-          if (result && result.winner) {
-            // Optional: update scores (if applicable for the game - here we don't maintain continuous score)
-            io.to(roomId).emit('game-over', { winner: result.winner, board: newBoard, redScore: updatedRoom.redScore, blueScore: updatedRoom.blueScore });
-          }
-        } catch (e) { console.error('attack handler: failed to compute game result', e); }
+        const newBoard = res?.board || res;
+        const details = { ...(res?.details || { hit: false, sunk: null }), x, y, player: role };
+
+        const updatedRoom = await prisma.room.update({
+          where: { id: roomId },
+          data: { board: newBoard },
+          select: { redScore: true, blueScore: true, board: true }
+        });
+
+        console.log(`[ATTACK] User ${userId} (${role}) attacked ${x},${y} in room ${roomId}. Hit: ${details.hit}, Turn now: ${newBoard.turn}`);
+
+        // Log presence from your own maps
+        const userIds = roomOnlineUsers.get(roomId) || new Set();
+        console.log(`[ATTACK] sync-board targets for room ${roomId}: users=${userIds.size}`);
+
+        emitToRoom(roomId, 'sync-board', newBoard);
+        emitToRoom(roomId, 'attack-result', details);
+
+        const result = game.getResult(newBoard);
+        if (result?.winner) {
+          emitToRoom(roomId, 'game-over', {
+            winner: result.winner,
+            board: newBoard,
+            redScore: updatedRoom.redScore,
+            blueScore: updatedRoom.blueScore
+          });
+        }
       } catch (err) {
         console.error('attack handler error:', err);
         socket.emit('action-error', { message: 'Error handling attack' });
@@ -861,263 +1044,129 @@ io.on('connection', async (socket) => {
     });
 
     socket.on('reset-game', async (roomId) => {
-      // Reset using the game's initial state so different games can control defaults.
       const room = await prisma.room.findUnique({ where: { id: roomId }, select: { gameType: true } });
       const game = room && getGame(room.gameType) || getGame('drop4');
-      const initialBoard = game && typeof game.getInitialState === 'function' ? game.getInitialState() : Array.from({ length: 6 }, () => Array(7).fill(0));
-      const resetRoom = await prisma.room.update({ where: { id: roomId }, data: { board: initialBoard }, select: { redScore: true, blueScore: true } });
-      // Broadcast the reset board to all players (include sender)
-      io.to(roomId).emit('game-reset', { board: initialBoard, currentPlayer: 'red', redScore: resetRoom.redScore, blueScore: resetRoom.blueScore });
-      try { await emitRoomList(); } catch (e) { /* ignore */ }
+      const initialBoard = game?.getInitialState ? game.getInitialState() : Array.from({ length: 6 }, () => Array(7).fill(0));
+
+      const resetRoom = await prisma.room.update({
+        where: { id: roomId },
+        data: { board: initialBoard },
+        select: { redScore: true, blueScore: true }
+      });
+
+      // Broadcast reset to all players
+      emitToRoom(roomId, 'game-reset', {
+        board: initialBoard,
+        currentPlayer: 'red',
+        redScore: resetRoom.redScore,
+        blueScore: resetRoom.blueScore
+      });
+
+      await emitRoomList();
     });
 
-    socket.on('leave-game', async (roomId ) => {
+
+    socket.on('leave-game', async (roomId) => {
       console.log('leave-game event received for room:', roomId);
+
       let username = null;
-      try { const user = await prisma.user.findUnique({ where: { id: userId }, select: { username: true } }); username = user?.username || null; } catch (e) { /* ignore */ }
       try {
-        // leave the socket room immediately so we don't route events to them
-        socket.leave(roomId);
-        socketMeta.delete(socket.id);
-        // Do not immediately remove the participant from the DB on leave - schedule a delayed cleanup
-        // to allow for brief reloads and prevent immediately kicking the host out during redirect.
-        console.log(`leave-game: scheduling removal for participant ${userId} in room ${roomId} (delayed cleanup)`);
-        const rp = roomPlayers.get(roomId) || {};
-        // find role for this user and remove it (but preserve host name briefly if room was just created)
-        const roleToRemove = username ? Object.keys(rp).find(k => rp[k] === username) : Object.keys(rp).find(k => rp[k] === undefined || rp[k] === null);
-        if (roleToRemove) {
-          if (roleToRemove === 'red' && recentRoomCreation.has(roomId)) {
-            console.log(`leave-game: preserving HOST player ${username} in-memory during recent room create window for ${roomId}`);
-          } else {
-            delete rp[roleToRemove];
-          }
+        const user = await prisma.user.findUnique({ where: { id: userId }, select: { username: true } });
+        username = user?.username || null;
+      } catch (e) { /* ignore */ }
+
+      // Update in-memory players
+      const rp = roomPlayers.get(roomId) || {};
+      const roleToRemove = username ? Object.keys(rp).find(k => rp[k] === username) : null;
+      if (roleToRemove) {
+        if (roleToRemove === 'red' && recentRoomCreation.has(roomId)) {
+          console.log(`leave-game: preserving HOST ${username} during recent room create window for ${roomId}`);
+        } else {
+          delete rp[roleToRemove];
         }
-        io.to(roomId).emit('player-left', { username, role: roleToRemove || 'spectator' });
-        io.to(roomId).emit('all-players-info', rp);
-        try { await emitRoomList(); } catch (e) { console.error('emitRoomList failed after leave-game participant removal', e); }
-      } catch (e) {
-        console.error('Error processing leave-game:', e);
       }
 
-      // Schedule a delayed cleanup which recomputes inRoom based on actual socket count (allow rejoin within grace)
+      emitToRoom(roomId, 'player-left', { username, role: roleToRemove || 'spectator' });
+      emitToRoom(roomId, 'all-players-info', rp);
+
+      // Schedule delayed cleanup with grace period
       const leaveTimeout = setTimeout(async () => {
         try {
-          // Use server-side unique user presence to update inRoom
-          const rset = roomOnlineUsers.get(roomId) || new Set();
-          const wasCounted = rset.has(userId);
-          let oldroom = null;
-          if (wasCounted) {
-            rset.delete(userId);
-            const urs = userRooms.get(userId);
-            if (urs) urs.delete(roomId);
-            // no op: do not remove room map entries here — they were handled in wasCounted branch
-            try {
-              oldroom = await prisma.room.update({ where: { id: roomId }, data: { inRoom: { decrement: 1 } }, select: { inRoom: true } });
-              if (oldroom && oldroom.inRoom < 0) {
-                await prisma.room.update({ where: { id: roomId }, data: { inRoom: 0 } });
-                console.warn(`leave-game cleanup: clamped inRoom for ${roomId} to 0 to avoid negative`);
-              }
-            } catch (e) {
-              if (e?.code === 'P2025') {
-                console.warn(`leave-game cleanup: room ${roomId} not found when decrementing inRoom (skipping)`);
-                return; // room was deleted
-              }
-              throw e;
-            }
-          } else {
-            // If user was not counted, just read the latest room for checks
-            try {
-              oldroom = await prisma.room.findUnique({ where: { id: roomId }, select: { inRoom: true } });
-            } catch (e) {
-              if (e?.code === 'P2025') {
-                console.warn(`leave-game cleanup: room ${roomId} not found when reading inRoom (skipping)`);
-                return;
-              }
-              throw e;
-            }
-              if (rset.size === 0) roomOnlineUsers.delete(roomId);
-              if (urs && urs.size === 0) userRooms.delete(userId);
-          }
-          const room = await prisma.room.findUnique({ where: { id: roomId }, select: { inRoom: true, participants: true } });
+          await removeUserFromRoom(userId, roomId); // centralized helper
+
+          const room = await prisma.room.findUnique({ where: { id: roomId }, include: { participants: true } });
           const participant = await prisma.roomParticipant.findUnique({ where: { userId_roomId: { userId, roomId } } });
+
           console.log(`User ${userId} left room ${roomId} # current inRoom: ${room?.inRoom}`);
-          if (!room || room.inRoom <= 0 || !(room.participants && room.participants.length > 0)) {
-            // If the room was created recently, skip deletion to allow client redirect/reconnect
+
+          let shouldDeleteRoom = false;
+          if (!room || room.inRoom <= 0 || room.participants.length === 0) {
             if (recentRoomCreation.has(roomId)) {
               console.log(`Skipping deletion for recently-created room ${roomId}`);
-              // schedule retry cleanup once TTL expires
               const createdAt = recentRoomCreation.get(roomId) || 0;
               const remaining = Math.max(0, (createdAt + RECENT_ROOM_TTL_MS) - Date.now());
               scheduleRetryCleanupForUser(roomId, userId, remaining + 500);
             } else {
-              // Use safe helper to delete the room which avoids racing deletes
               await safeDeleteRoom(roomId);
+              shouldDeleteRoom = true;
             }
-            roomPlayers.delete(roomId);
-            console.log(`Room ${roomId} deleted as it became empty or had no participants`);
+            if (shouldDeleteRoom) {
+              roomPlayers.delete(roomId);
+              console.log(`Room ${roomId} deleted as it became empty`);
+            }
           }
-          // If this was a leaving user, remove their participant DB entry now (unless host + recent creation window)
-          try {
-            if (participant && !(recentRoomCreation.has(roomId) && participant.permission === 'HOST')) {
-              await prisma.roomParticipant.deleteMany({ where: { userId, roomId } });
-              console.log(`Removed participant record for user ${userId} from ${roomId} during delayed leave cleanup`);
-            } else if (participant && recentRoomCreation.has(roomId) && participant.permission === 'HOST') {
-              console.log(`Skipping participant deletion for host ${userId} during recent creation window in ${roomId}`);
-            }
-          } catch (e) { console.error('Failed to delete roomParticipant during delayed leave cleanup:', e); }
-          try { await emitRoomList(); } catch (e) { console.error('emitRoomList failed after leave-game cleanup', e); }
+
+          // Remove participant only if room was deleted
+          if (shouldDeleteRoom && participant) {
+            await prisma.roomParticipant.deleteMany({ where: { userId, roomId } });
+            console.log(`Removed participant record for user ${userId} from ${roomId} during delayed leave cleanup`);
+          }
+          await emitRoomList();
         } catch (err) {
           console.error('Error during delayed cleanup in leave-game:', err);
         }
-      }, 20000); // increase grace period to 20s for leave-game
+      }, LEAVE_GRACE_PERIOD_MS);
 
-      // Store a leave cleanup so we can cancel if the user rejoins quickly
-      const userTimers2 = disconnectTimers.get(userId) || new Map();
-      userTimers2.set(roomId, leaveTimeout);
-      disconnectTimers.set(userId, userTimers2);
-      try { await emitRoomList(); } catch (e) { console.error('emitRoomList failed after leave-game', e); }
+      // Store timer so it can be canceled if user rejoins quickly
+      const userTimers = disconnectTimers.get(userId) || new Map();
+      userTimers.set(roomId, leaveTimeout);
+      disconnectTimers.set(userId, userTimers);
+
+      await emitRoomList();
     });
 
-    socket.on('disconnect', async () => {
-      console.log(`Socket ${socket.id} disconnected`);
-      // On disconnect, schedule cleanup for all rooms the user was a member of (unique-user accounting)
-      const rooms = userRooms.get(userId) || new Set();
-      if (!rooms || rooms.size === 0) return;
-      for (const roomId of rooms) {
-        // Store disconnect timer keyed by userId and roomId
-        const timeoutId = setTimeout(async () => {
-          console.log(`Cleaning up user ${userId} from room ${roomId} after grace period`);
 
-        try {
-            // Use the server-side roomOnlineUsers set to determine whether this unique user is still counted
-            const rset = roomOnlineUsers.get(roomId) || new Set();
-            const wasCounted = rset.has(userId);
-            let oldroom = null;
-              if (wasCounted) {
-              rset.delete(userId);
-              // Also drop the mapping in userRooms
-              const urs = userRooms.get(userId);
-              if (urs) urs.delete(roomId);
-              try {
-                oldroom = await prisma.room.update({ where: { id: roomId }, data: { inRoom: { decrement: 1 } } });
-                if (oldroom && oldroom.inRoom < 0) {
-                  await prisma.room.update({ where: { id: roomId }, data: { inRoom: 0 } });
-                  console.warn(`disconnect cleanup: clamped inRoom for ${roomId} to 0 to avoid negative`);
-                }
-              } catch (e) {
-                if (e?.code === 'P2025') {
-                  console.warn(`disconnect cleanup: room ${roomId} was already deleted when decrementing inRoom (skipping)`);
-                  // If the room doesn't exist, skip further cleanup for this room
-                  try { socketMeta.delete(socket.id); } catch (err) { /* ignore */ }
-                  const ut = disconnectTimers.get(userId);
-                  if (ut && ut.has(roomId) && ut.get(roomId) === timeoutId) {
-                    ut.delete(roomId);
-                    if (ut.size === 0) disconnectTimers.delete(userId);
-                  }
-                  return;
-                } else {
-                  throw e;
-                }
-              }
-              if (rset.size === 0) roomOnlineUsers.delete(roomId);
-              if (urs && urs.size === 0) userRooms.delete(userId);
-            }
+    socket.on('disconnect', () => {
+      const sset = userSockets.get(userId);
+      if (sset) {
+        sset.delete(socket.id);
 
-          const room = await prisma.room.findUnique({ where: { id: roomId }, select: { inRoom: true, participants: true } });
+        if (sset.size === 0) {
+          // Schedule delayed cleanup instead of immediate removal
+          const rooms = userRooms.get(userId) || new Set();
+          for (const roomId of rooms) {
+            console.log(`Scheduling disconnect cleanup for user ${userId} in room ${roomId}`);
 
-          const participant = await prisma.roomParticipant.findUnique({
-            where: { userId_roomId: { userId, roomId } }
-          });
-
-          let role = 'spectator';
-          let username = null;
-          try { const user = await prisma.user.findUnique({ where: { id: userId }, select: { username: true } }); username = user?.username || null; } catch (e) { /* ignore */ }
-          if (participant) {
-            if (participant.permission === 'HOST') role = 'red';
-            else if (participant.permission === 'PLAYER') role = 'blue';
-          } else {
-            console.warn(`No participant found for user ${userId} in room ${roomId}`);
-          }
-
-          io.to(roomId).emit('player-left', { username, role });
-            try {
-            // Remove participant entry for disconnected user if the cleanup matured (and not Host in TTL)
-                if (participant) {
-                  if (recentRoomCreation.has(roomId) && participant?.permission === 'HOST') {
-                    console.log(`Skipping removal of HOST participant ${userId} during recent room creation window for ${roomId}`);
-                  } else {
-                    try { await prisma.roomParticipant.deleteMany({ where: { userId, roomId } }); console.log(`Removed participant record for ${userId} during disconnect cleanup in ${roomId}`); } catch (e) { /* ignore */ }
-                  }
-                }
-            const rp = roomPlayers.get(roomId) || {};
-            if (username) {
-              Object.keys(rp).forEach(k => {
-                if (rp[k] === username) {
-                  // keep the host in-memory if the room was recently created to prevent transient UI flicker
-                  if (k === 'red' && recentRoomCreation.has(roomId)) {
-                    console.log(`disconnect cleanup: preserving HOST ${username} in-memory for ${roomId} due to recent creation`);
-                  } else {
-                    delete rp[k];
-                  }
-                }
-              });
-            } else if (role === 'red' || role === 'blue') {
-              if (!(role === 'red' && recentRoomCreation.has(roomId))) {
-                delete rp[role];
+            const timeoutId = setTimeout(async () => {
+              const activeSockets = userSockets.get(userId);
+              if (!activeSockets || activeSockets.size === 0) {
+                await removeUserFromRoom(userId, roomId); // centralized helper
+                console.log(`Cleaned up user ${userId} from room ${roomId} after disconnect grace`);
               } else {
-                console.log(`disconnect cleanup: preserving HOST in-memory (${role}) for ${roomId} due to recent creation`);
+                console.log(`User ${userId} reconnected, skipping cleanup for room ${roomId}`);
               }
-            }
-            io.to(roomId).emit('all-players-info', rp);
-          } catch (e) { console.error('Failed to update roomPlayers on disconnect:', e); }
+            }, LEAVE_GRACE_PERIOD_MS);
 
-          if (!room || room.inRoom <= 0 || !(room.participants && room.participants.length > 0)) {
-            if (recentRoomCreation.has(roomId)) {
-              console.log(`Skipping deletion for newly created room ${roomId} during disconnect cleanup`);
-              // schedule retry cleanup once TTL expires
-              const createdAt = recentRoomCreation.get(roomId) || 0;
-              const remaining = Math.max(0, (createdAt + RECENT_ROOM_TTL_MS) - Date.now());
-              setTimeout(() => { attemptRoomCleanup(roomId, userId); }, remaining + 500);
-            } else {
-              await safeDeleteRoom(roomId);
-            }
-            try { await emitRoomList(); } catch (e) { console.error('emitRoomList failed after deleting room on disconnect', e); }
+            const userTimers = disconnectTimers.get(userId) || new Map();
+            userTimers.set(roomId, timeoutId);
+            disconnectTimers.set(userId, userTimers);
           }
-        } catch (err) {
-          // Gracefully ignore missing room errors caused by concurrent deletion
-          if (err?.code === 'P2025') {
-            console.warn(`Disconnect cleanup: room ${roomId} already deleted (P2025) - ignoring`);
-          } else {
-            console.error(`Error cleaning up room ${roomId}:`, err);
-          }
+        } else {
+          console.log(`User ${userId} still has active sockets, skipping cleanup`);
         }
-
-        // cleanup socketMeta entries for this socket
-        try { socketMeta.delete(socket.id); } catch (e) { /* ignore */ }
-        const userTimers3 = disconnectTimers.get(userId);
-        if (userTimers3 && userTimers3.has(roomId) && userTimers3.get(roomId) === timeoutId) {
-            userTimers3.delete(roomId);
-            if (userTimers3.size === 0) disconnectTimers.delete(userId);
-          }
-        // Remove roomPlayers state for this user in case the DB was manually cleared
-          try {
-          const rp = roomPlayers.get(roomId);
-          if (rp) {
-            // remove any entries matching this user's username if present
-            Object.keys(rp).forEach(k => { if (rp[k] === username || rp[k] === undefined || rp[k] === null) delete rp[k]; });
-            io.to(roomId).emit('all-players-info', rp);
-            if (Object.keys(rp).length === 0) roomPlayers.delete(roomId);
-          }
-        } catch (e) { /* ignore */ }
-      }, 20000); // 20-second grace period
-
-        const userTimers4 = disconnectTimers.get(userId) || new Map();
-        userTimers4.set(roomId, timeoutId);
-        disconnectTimers.set(userId, userTimers4);
-        console.log(`Set disconnect cleanup for user ${userId} in room ${roomId} with timeout ${timeoutId}`);
       }
     });
-});
+  });
 
 server.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);

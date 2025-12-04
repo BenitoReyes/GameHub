@@ -1,50 +1,63 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Board Visual</title>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Battleship</title>
         <link rel="stylesheet" href="../../styles.css" />
-
     </head>
-    <body>
-    <a href="battleshipMenu.html" class="back-btn">◄ BACK</a>
+    <body class="battleship-page">
+        <a href="battleshipMenu.html" class="back-btn">◄ BACK</a>
 
-    <!-- Floating chips for Battleship theme -->
-    <div class="floating-chip chip-1">⛵</div>
-    <div class="floating-chip chip-2">🚢</div>
-    <div class="floating-chip chip-3">🚢</div>
-    <div class="floating-chip chip-4">⛵</div>
+        <!-- Player Profiles -->
+        <div class="profile-container profile-left profile-red">
+        <div class="profile-avatar">🚢</div>
+        <span class="profile-username" id="redPlayerName">Player 1</span>
+        </div>
+        <div class="profile-container profile-right profile-blue">
+        <div class="profile-avatar">🚢</div>
+        <span class="profile-username" id="bluePlayerName">Player 2</span>
+        </div>
 
-    <!-- Game container -->
-    <div class="battleship-page">
-            <h1>BATTLESHIP</h1>
-            <div id="board" style="padding:20px; color:#fff; font-size:12px; letter-spacing:1px;">
-            Loading...
-            </div>
-    </div>
+        <!-- Game Status (moved up top) -->
+        <div id="status" class="status-msg">Waiting for sync...</div>
 
-    <!-- Socket + module init -->
-    <script src="/socket.io/socket.io.js"></script>
-    <script type="module">
+        <!-- Board container that render() controls -->
+        <div id="board">Loading...</div>
+
+        <!-- Scoreboard -->
+        <div id="scoreboard">
+        <h3>Scores</h3>
+        <p>Red: <span id="redScore">0</span></p>
+        <p>Blue: <span id="blueScore">0</span></p>
+        </div>
+
+        <!-- Chat -->
+        <div class="chat-container">
+        <h2>★ LIVE CHAT ★</h2>
+        <div id="chatMessages" class="chat-box"></div>
+        <div class="chat-input-row">
+            <input id="chatInput" type="text" placeholder="Type message..." />
+            <button id="sendBtn" class="pixel-btn">SEND</button>
+        </div>
+        </div>
+
+        <!-- Scripts -->
+        <script src="../../stream-chat.bundle.js"></script>
+        <script src="/socket.io/socket.io.js"></script>
+        <script type="module">
         import battleshipModule from './game.js';
+        import { getSocket } from '../commonLogic/socket.js';
 
         const urlParams = new URLSearchParams(window.location.search);
-        const roomId = urlParams.get('roomId');
+        const roomId = urlParams.get('roomId') || sessionStorage.getItem('roomId');
         const userId = sessionStorage.getItem('userId');
         const token = sessionStorage.getItem('token');
         const role = sessionStorage.getItem('role');
         const username = sessionStorage.getItem('username');
 
-        const socket = io();
-
-        // Always emit join-game to ensure role assignment
-        socket.emit('join-room', roomId);
-        socket.emit('join-game', roomId);
-        socket.emit('request-board', roomId);
-
-        // Pass session info to game module
+        const socket = getSocket();
         battleshipModule.init({ roomId, userId, token, role, username });
-    </script>
+        </script>
     </body>
 </html>

@@ -389,12 +389,13 @@
             box-shadow: 0 0 0 4px #000, 0 2px 0 #000;
         }
 
-        /* Floating elements */
+        /* Floating elements (decorative only - don't capture pointer events) */
         .floating-chip {
             position: absolute;
             font-size: 40px;
             animation: float 3s ease-in-out infinite;
             z-index: 0;
+            pointer-events: none;
         }
 
         .chip-1 { top: 10%; left: 5%; animation-delay: 0s; }
@@ -613,16 +614,24 @@
 </body>
 <script src="../../stream-chat.bundle.js"></script>
 <script src="/socket.io/socket.io.js"></script>
-<script>
-    const socket = io();
+<script type="module">
+    import { getSocket } from '../commonLogic/socket.js';
+    const socket = getSocket();
 
     document.getElementById('create-game-btn').addEventListener('click', () => {
         socket.emit('create-game', { gameType: 'battleship' });
     });
 
     // When the server confirms the room was created
-    socket.on('game-created', ({ roomId }) => {
-        // Redirect into the Battleship board page with the roomId in the query string
+    socket.on('game-created', ({ roomId, userId, token, role, username, gameType }) => {
+        // Persist session info so the redirected page can initialize immediately
+        sessionStorage.setItem('roomId', roomId);
+        sessionStorage.setItem('userId', userId);
+        sessionStorage.setItem('token', token);
+        sessionStorage.setItem('role', role);
+        sessionStorage.setItem('username', username);
+        sessionStorage.setItem('gameType', gameType || 'battleship');
+
         window.location.href = `battleship.html?roomId=${roomId}`;
     });
 </script>

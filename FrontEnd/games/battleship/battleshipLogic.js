@@ -93,8 +93,12 @@ export function applyAction(state, action = {}) {
         maybeMarkSunk(next, target, x, y);
     }
 
-    // Toggle turn (simple rule: alternate every shot)
-    next.turn = player === 'red' ? 'blue' : 'red';
+    // Turn rule: if hit -> same player goes again, else toggle turn
+    if (hit) {
+        next.turn = player;
+    } else {
+        next.turn = player === 'red' ? 'blue' : 'red';
+    }
 
     // Winner check
     const result = getResult(next);

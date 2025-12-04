@@ -1,17 +1,9 @@
 import { getSocket } from '../commonLogic/socket.js';
+import { showAlert } from '../commonLogic/ui.js';
 
-// Global handlers for button clicks
-window.__battleshipToggleDir = function() {
-    if ((state.role === 'red' || state.role === 'blue') && state.phase === 'placement') {
-        state.placement.dir = state.placement.dir === 'H' ? 'V' : 'H';
-        render();
-    }
-};
+const socket = getSocket();
 
-window.__battleshipSubmitShips = function() {
-    submitShips();
-};
-
+// --- Constants ---
 const SIZE = 10;
 const SHIPS = [
     { name: 'Carrier', size: 5 },
@@ -21,16 +13,69 @@ const SHIPS = [
     { name: 'Destroyer', size: 2 }
 ];
 
+// --- State ---
 const state = {
     roomId: null,
-    role: null,            // 'red' | 'blue' | 'spectator'
-    phase: 'placement',    // derived from board
+    userId: null,
+    token: null,
+    username: 'Player',
+    role: null, // 'red' | 'blue' | 'spectator' | null
+    phase: 'placement',
     turn: 'red',
     winner: null,
-    ownBoard: board(),
-    oppFog: board(),
-    placement: { dir: 'H', ships: SHIPS, placed: [] }
+    status: '',
+    synced: false,
+    placement: { placed: [], dir: 'H' },
+    rawRed: null,
+    rawBlue: null,
+    shipsRed: [],
+    shipsBlue: [],
+    oppFog: null,
+    ownBoard: null
 };
+
+// --- Sync handshake tunables ---
+const SYNC_RETRY_MS = 1500;
+const MAX_SYNC_ATTEMPTS = 6;
+let _syncRetryTimer = null;
+let _syncAttempts = 0;
+
+// --- Helpers ---
+function byId(id) { return document.getElementById(id); }
+
+window.__battleshipToggleDir = function () {
+    if ((state.role === 'red' || state.role === 'blue') && state.phase === 'placement') {
+        state.placement.dir = state.placement.dir === 'H' ? 'V' : 'H';
+        render();
+    }
+};
+
+window.__battleshipSubmitShips = function () {
+    submitShips();
+};
+
+function isPlacedAt(layout = [], x, y) {
+    for (const s of layout) {
+        const size = SHIPS.find(d => d.name === s.name)?.size || 0;
+        for (let i = 0; i < size; i++) {
+        const cx = s.dir === 'H' ? s.x + i : s.x;
+        const cy = s.dir === 'V' ? s.y + i : s.y;
+        if (cx === x && cy === y) return true;
+        }
+    }
+    return false;
+}
+
+function buildShipCells(x, y, size, dir) {
+    const cells = [];
+    for (let i = 0; i < size; i++) {
+        const cx = dir === 'H' ? x + i : x;
+        const cy = dir === 'V' ? y + i : y;
+        if (cx >= SIZE || cy >= SIZE) return null;
+        cells.push({ x: cx, y: cy });
+    }
+    return cells;
+}
 
 function board() {
     return Array.from({ length: SIZE }, () =>
@@ -38,101 +83,102 @@ function board() {
     );
 }
 
-function byId(id) { return document.getElementById(id); }
-
-function render() {
-    const root = byId('board');
-    if (!root) return;
-
-    const phaseLabel = state.winner ? `FINISHED (Winner: ${state.winner})` : state.phase.toUpperCase();
-
-    root.innerHTML = `
-        <div class="status-bar">
-        <span>Role: ${state.role || 'unknown'}</span>
-        <span>Phase: ${phaseLabel}</span>
-        <span>Turn: ${state.turn}</span>
-        </div>
-        <div class="boards-wrapper">
-        <div class="board-section">
-            <h2>Your Fleet</h2>
-            <div id="own" class="grid-board"></div>
-            <div class="controls">
-            <button id="toggleDir" class="pixel-btn" onclick="window.__battleshipToggleDir?.()">Orientation: ${state.placement.dir}</button>
-            <button id="submitShips" class="pixel-btn" onclick="window.__battleshipSubmitShips?.()">Submit Ships</button>
-            </div>
-        </div>
-        <div class="board-section">
-            <h2>Enemy Waters</h2>
-            <div id="opp" class="grid-board"></div>
-        </div>
-        </div>
-        <div id="status" class="status-msg"></div>
-    `;
-
-    const own = byId('own');
-    const opp = byId('opp');
-
-    // Clear containers before repopulating
-    own.innerHTML = '';
-    opp.innerHTML = '';
-
-    for (let y = 0; y < SIZE; y++) {
-        for (let x = 0; x < SIZE; x++) {
-        const oc = document.createElement('div');
-        oc.className = 'cell';
-        const o = state.ownBoard[y][x];
-        if (o.ship) oc.classList.add('ship');
-        if (o.hit) oc.classList.add('hit');
-        if (o.miss) oc.classList.add('miss');
-        // Only allow placement if player has an assigned role and is in placement phase
-        if ((state.role === 'red' || state.role === 'blue') && state.phase === 'placement') {
-            oc.onclick = () => placeShipInteractive(x, y);
-        } else {
-            oc.onclick = null;
-        }
-        own.appendChild(oc);
-
-        const pc = document.createElement('div');
-        pc.className = 'cell';
-        const p = state.oppFog[y][x];
-        if (p.hit) pc.classList.add('hit');
-        if (p.miss) pc.classList.add('miss');
-        // Only allow attack interaction if in-progress, this client is a player, and it is their turn
-        if ((state.role === 'red' || state.role === 'blue') && state.phase === 'in-progress' && state.turn === state.role) {
-            pc.onclick = () => tryAttack(x, y);
-        } else {
-            pc.onclick = null;
-        }
-        opp.appendChild(pc);
+function hydrateBoardWithShips(layout = [], hitsMissesGrid) {
+    const b = board();
+    for (const s of layout) {
+        const size = SHIPS.find(d => d.name === s.name)?.size || 0;
+        for (let i = 0; i < size; i++) {
+        const cx = s.dir === 'H' ? s.x + i : s.x;
+        const cy = s.dir === 'V' ? s.y + i : s.y;
+        b[cy][cx].ship = true;
         }
     }
-
-    // Update button disabled state based on role/phase
-    setTimeout(() => {
-        const toggleBtn = byId('toggleDir');
-        if (toggleBtn) {
-            if ((state.role === 'red' || state.role === 'blue') && state.phase === 'placement') {
-                toggleBtn.removeAttribute('disabled');
-            } else {
-                toggleBtn.setAttribute('disabled', 'disabled');
-            }
+    for (let y = 0; y < SIZE; y++) {
+        for (let x = 0; x < SIZE; x++) {
+        const v = hitsMissesGrid?.[y]?.[x] ?? 0;
+        if (v === 1) b[y][x].hit = true;
+        if (v === -1) b[y][x].miss = true;
         }
-
-        const submitBtn = byId('submitShips');
-        if (submitBtn) {
-            if ((state.role === 'red' || state.role === 'blue') && state.phase === 'placement') {
-                submitBtn.removeAttribute('disabled');
-            } else {
-                submitBtn.setAttribute('disabled', 'disabled');
-            }
-        }
-    }, 0);
+    }
+    return b;
 }
 
+function hydrateFog(targetGrid) {
+    const b = board();
+    for (let y = 0; y < SIZE; y++) {
+        for (let x = 0; x < SIZE; x++) {
+        const v = targetGrid?.[y]?.[x] ?? 0;
+        if (v === 1) b[y][x].hit = true;
+        if (v === -1) b[y][x].miss = true;
+        }
+    }
+    return b;
+}
 
+// --- Status ---
 function setStatus(msg) {
+    state.status = msg;
     const el = byId('status');
     if (el) el.textContent = msg;
+    state.lastStatusTime = Date.now();
+}
+
+function clearOldStatus() {
+    if (state.phase === 'finished') return;
+    if (Date.now() - state.lastStatusTime > 5000) {
+        const el = byId('status');
+        if (el && el.textContent) el.textContent = '';
+    }
+}
+
+// --- Sync board from server ---
+function applySyncBoard(serverBoard) {
+    state.phase = serverBoard.phase === 'in-progress' ? 'battle' : (serverBoard.phase || 'placement');
+    state.turn = serverBoard.turn || 'red';
+    state.winner = serverBoard.winner ?? null;
+    state.synced = true;
+
+    state.rawRed = serverBoard.red || Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+    state.rawBlue = serverBoard.blue || Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+    state.shipsRed = serverBoard.ships?.red || [];
+    state.shipsBlue = serverBoard.ships?.blue || [];
+
+    if (state.role === 'red') {
+        state.placement.placed = state.shipsRed.map(s => ({ name: s.name, x: s.x, y: s.y, dir: s.dir }));
+    } else if (state.role === 'blue') {
+        state.placement.placed = state.shipsBlue.map(s => ({ name: s.name, x: s.x, y: s.y, dir: s.dir }));
+    } else {
+        state.placement.placed = [];
+    }
+
+    if (state.role === 'red') state.ownBoard = hydrateBoardWithShips(state.shipsRed, state.rawRed);
+    else if (state.role === 'blue') state.ownBoard = hydrateBoardWithShips(state.shipsBlue, state.rawBlue);
+    else state.ownBoard = hydrateBoardWithShips([], []);
+
+    if (state.role === 'red') state.oppFog = hydrateFog(state.rawBlue);
+    else if (state.role === 'blue') state.oppFog = hydrateFog(state.rawRed);
+    else state.oppFog = hydrateBoardWithShips(state.shipsBlue.concat(state.shipsRed), []);
+}
+
+// --- Placement interaction ---
+function placeShipInteractive(x, y, owner) {
+    if (state.phase !== 'placement') return setStatus('Not in placement phase.');
+    if (!state.role || state.role === 'spectator') return setStatus('Only a player can place ships.');
+    if (owner !== state.role) return setStatus('You can only place on your side of the board.');
+
+    const remaining = SHIPS.filter(s => !state.placement.placed.find(p => p.name === s.name));
+    if (!remaining.length) return setStatus('All ships placed. Submit.');
+
+    const next = remaining[0];
+    const c = coords(x, y, next.size, state.placement.dir);
+    if (!c) return setStatus('Out of bounds.');
+    for (const k of c) {
+        if (isPlacedAt(state.placement.placed, k.x, k.y)) return setStatus('Overlap.');
+    }
+
+    state.placement.placed.push({ name: next.name, x, y, dir: state.placement.dir });
+    setStatus(`Placed ${next.name}. ${remaining.length - 1} remaining.`);
+    render();
 }
 
 function coords(x, y, size, dir) {
@@ -146,173 +192,369 @@ function coords(x, y, size, dir) {
     return out;
 }
 
-function placeShipInteractive(x, y) {
-    // Only allow placement in placement phase
-    if (state.phase !== 'placement') return setStatus('Not in placement phase.');
-    // Only player roles (red/blue) can place, not spectators
-    if (!state.role || state.role === 'spectator') return setStatus('Only a player can place ships.');
-    
-    const remaining = state.placement.ships.filter(s => !state.placement.placed.find(p => p.name === s.name));
-    if (!remaining.length) return setStatus('All ships placed. Submit.');
-    
-    const next = remaining[0];
-    const c = coords(x, y, next.size, state.placement.dir);
-    if (!c) return setStatus('Out of bounds.');
-    if (c.some(k => state.ownBoard[k.y][k.x].ship)) return setStatus('Overlap.');
-    
-    // Place locally
-    for (const k of c) state.ownBoard[k.y][k.x].ship = true;
-    state.placement.placed.push({ name: next.name, x, y, dir: state.placement.dir });
-    setStatus(`Placed ${next.name}. ${remaining.length - 1} remaining.`);
-    render();
-}
-
-function applySyncBoard(board) {
-    // Always update phase/turn/winner
-    state.phase = board.phase || 'placement';
-    state.turn = board.turn || 'red';
-    state.winner = board.winner ?? null;
-
-    // If role is known, update boards from proper perspective
-    if (state.role === 'red') {
-        state.ownBoard = hydrateBoardWithShips(board.ships?.red, board.red);
-        state.oppFog = hydrateFog(board.blue);
-        state.placement.placed = board.ships?.red?.map(s => ({ name: s.name, x: s.x, y: s.y, dir: s.dir })) || [];
-    } else if (state.role === 'blue') {
-        state.ownBoard = hydrateBoardWithShips(board.ships?.blue, board.blue);
-        state.oppFog = hydrateFog(board.red);
-        state.placement.placed = board.ships?.blue?.map(s => ({ name: s.name, x: s.x, y: s.y, dir: s.dir })) || [];
-    } else {
-        // Role not set yet, default to red perspective to avoid showing empty boards
-        state.ownBoard = hydrateBoardWithShips(board.ships?.red, board.red);
-        state.oppFog = hydrateFog(board.blue);
-    }
-}
-
-function hydrateBoardWithShips(layout = [], hitsMissesGrid) {
-    const b = board();
-    for (const s of layout || []) {
-        const size = SHIPS.find(d => d.name === s.name)?.size || 0;
-        for (let i = 0; i < size; i++) {
-        const cx = s.dir === 'H' ? s.x + i : s.x;
-        const cy = s.dir === 'V' ? s.y + i : s.y;
-        b[cy][cx].ship = true;
-        }
-    }
-    for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
-        const v = hitsMissesGrid?.[y]?.[x] ?? 0;
-        if (v === 1) b[y][x].hit = true;
-        if (v === -1) b[y][x].miss = true;
-    }
-    return b;
-}
-
-function hydrateFog(targetGrid) {
-    const b = board();
-    for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
-        const v = targetGrid?.[y]?.[x] ?? 0;
-        if (v === 1) b[y][x].hit = true;
-        if (v === -1) b[y][x].miss = true;
-    }
-    return b;
-}
-
 function submitShips() {
     if (state.phase !== 'placement') return setStatus('Not in placement.');
     if (state.role === 'spectator') return setStatus('Spectators cannot submit ships.');
     const missing = SHIPS.filter(s => !state.placement.placed.find(p => p.name === s.name));
     if (missing.length) return setStatus(`Place all ships: ${missing.map(m => m.name).join(', ')}`);
-    const socket = getSocket();
-    socket.emit('place-ships', { roomId: state.roomId, layout: state.placement.placed });
-        setStatus('Submitted. Waiting for opponent.');
-        // disable further placement until server syncs
-        state.phase = 'waiting';
-        render();
+    const sock = getSocket();
+    sock.emit('place-ships', { roomId: state.roomId, layout: state.placement.placed });
+    setStatus('Submitted. Waiting for opponent.');
+    state.phase = 'waiting';
+    render();
 }
 
 function tryAttack(x, y) {
-    if (state.phase !== 'in-progress') return;
+    if (state.phase !== 'battle') return;
     if (state.role === 'spectator') return setStatus('Spectators cannot attack.');
     if (state.turn !== state.role) return setStatus('Not your turn.');
     const fog = state.oppFog[y][x];
     if (fog.hit || fog.miss) return setStatus('Already targeted.');
-    const socket = getSocket();
-    socket.emit('attack', { roomId: state.roomId, x, y });
+    const sock = getSocket();
+    sock.emit('attack', { roomId: state.roomId, x, y });
 }
 
+// --- Chat wiring (socket-based) ---
+function setupChat(sock) {
+    const input = byId('chatInput');
+    const sendBtn = byId('sendBtn');
+    const messagesEl = byId('chatMessages');
 
-export default {
-    name: 'battleship',
-    metadata: { type: 'board', realtime: false },
+    if (!input || !sendBtn || !messagesEl) return;
 
-    async init({ roomId, userId, token, role, username } = {}) {
-    const socket = getSocket();
-    state.roomId = roomId;
-    state.role = role || null;  // Initialize from parameter
-    state.phase = 'placement';
+    sendBtn.onclick = () => {
+        const text = input.value.trim();
+        if (!text) return;
+        sock.emit('chat-message', {
+        roomId: state.roomId,
+        user: state.username,
+        role: state.role,
+        text
+        });
+        input.value = '';
+    };
 
-    // Set initial role if provided
-    if (role) {
-        render();
+    sock.on('chat-message', ({ user, role, text }) => {
+        const msgEl = document.createElement('div');
+        msgEl.className = 'chat-msg';
+        msgEl.textContent = `${role || ''} ${user}: ${text}`;
+        messagesEl.appendChild(msgEl);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+    });
+}
+
+// --- Render ---
+function render() {
+    const root = byId('board');
+    if (!root) return;
+
+    const phaseLabel = !state.synced
+        ? 'SYNCING...'
+        : state.winner
+        ? `FINISHED (Winner: ${state.winner})`
+        : (state.phase || 'PLACEMENT').toUpperCase();
+
+    root.innerHTML = `
+        <div class="status-bar">
+        <span id="roleLabel">Role: ${state.role || 'pending'}</span>
+        <span id="phaseLabel">Phase: ${phaseLabel}</span>
+        <span id="turnIndicator">Turn: ${state.turn.toUpperCase()}</span>
+        </div>
+
+        <div class="boards-wrapper">
+        <div class="board-section">
+            <h2>Red Fleet</h2>
+            <div id="own" class="grid-board"></div>
+            ${state.role === 'red' ? `
+            <div class="controls">
+                <button id="toggleDir" class="pixel-btn">Orientation: ${state.placement.dir}</button>
+                <button id="submitShips" class="pixel-btn">Submit Ships</button>
+            </div>` : ''}
+        </div>
+        <div class="board-section">
+            <h2>Blue Fleet</h2>
+            <div id="opp" class="grid-board"></div>
+            ${state.role === 'blue' ? `
+            <div class="controls">
+                <button id="toggleDir" class="pixel-btn">Orientation: ${state.placement.dir}</button>
+                <button id="submitShips" class="pixel-btn">Submit Ships</button>
+            </div>` : ''}
+        </div>
+        </div>
+        <div id="status" class="status-msg">${state.status || ''}</div>
+        ${state.phase === 'finished' && state.role !== 'spectator' ? `
+        <div class="controls"><button id="playAgain" class="pixel-btn">Play Again</button></div>` : ''}
+    `;
+
+    const own = byId('own');
+    const opp = byId('opp');
+    own.innerHTML = '';
+    opp.innerHTML = '';
+
+    for (let y = 0; y < SIZE; y++) {
+        for (let x = 0; x < SIZE; x++) {
+        // Red board cell
+        const oc = document.createElement('div');
+        oc.className = 'cell';
+        const rawR = state.rawRed?.[y]?.[x] ?? 0;
+        if (rawR === 1) oc.classList.add('hit');
+        if (rawR === -1) oc.classList.add('miss');
+        const placedServerRed = isPlacedAt(state.shipsRed, x, y);
+        const placedLocalRed = state.role === 'red' && isPlacedAt(state.placement.placed, x, y);
+        if (placedLocalRed || (placedServerRed && (state.role === 'red' || state.role === 'spectator' || state.phase === 'finished'))) {
+            oc.classList.add('ship');
+        }
+        if (state.synced && state.phase === 'placement' && state.role === 'red') {
+            oc.onclick = () => placeShipInteractive(x, y, 'red');
+        } else if (state.phase === 'battle' && state.role === 'blue' && state.turn === state.role) {
+            oc.onclick = () => tryAttack(x, y);
+        }
+        own.appendChild(oc);
+
+        // Blue board cell
+        const pc = document.createElement('div');
+        pc.className = 'cell';
+        const rawB = state.rawBlue?.[y]?.[x] ?? 0;
+        if (rawB === 1) pc.classList.add('hit');
+        if (rawB === -1) pc.classList.add('miss');
+        const placedServerBlue = isPlacedAt(state.shipsBlue, x, y);
+        const placedLocalBlue = state.role === 'blue' && isPlacedAt(state.placement.placed, x, y);
+        if (placedLocalBlue || (placedServerBlue && (state.role === 'blue' || state.role === 'spectator' || state.phase === 'finished'))) {
+            pc.classList.add('ship');
+        }
+        if (state.synced && state.phase === 'placement' && state.role === 'blue') {
+            pc.onclick = () => placeShipInteractive(x, y, 'blue');
+        } else if (state.phase === 'battle' && state.role === 'red' && state.turn === state.role) {
+            pc.onclick = () => tryAttack(x, y);
+        }
+        opp.appendChild(pc);
+        }
     }
 
-    socket.on('assign-role', (r) => {
-        state.role = r;
-        const uname = username || sessionStorage.getItem('username') || 'Player';
-        socket.emit('player-joined', { roomId: state.roomId, role: r, username: uname });
-        render();
-    });
+    // External indicators
+    const turnEl = byId('turnIndicator');
+    if (turnEl) turnEl.textContent = `Turn: ${state.turn.toUpperCase()}`;
 
-    socket.on('game-joined', ({ role: r }) => {
-        state.role = r;
-        const uname = username || sessionStorage.getItem('username') || 'Player';
-        socket.emit('player-joined', { roomId: state.roomId, role: r, username: uname });
-        render();
-    });
-
-    // Fallback if role not assigned quickly
+    // Wire controls after render
     setTimeout(() => {
-        if (!state.role) socket.emit('join-game', roomId);
-    }, 300);
-
-    socket.emit('join-room', roomId);
-    socket.emit('request-board', roomId);
-
-    socket.on('sync-board', (board) => {
-        applySyncBoard(board);
-        render();
-    });
-
-    // server ack for placement to force a board refresh and unlock UI
-    socket.on('placed-ships', ({ success } = {}) => {
-        if (success) {
-            setStatus('Ships placed (server confirmed). Waiting for opponent.');
-            // after ack request latest board
-            socket.emit('request-board', state.roomId);
-            // move to waiting state until both placed
-            state.phase = 'waiting';
-            render();
+        const toggleBtn = byId('toggleDir');
+        if (toggleBtn) {
+        toggleBtn.disabled = !((state.role === 'red' || state.role === 'blue') && state.phase === 'placement');
+        toggleBtn.onclick = () => { window.__battleshipToggleDir(); };
         }
-    });
+        const submitBtn = byId('submitShips');
+        if (submitBtn) {
+        submitBtn.disabled = !((state.role === 'red' || state.role === 'blue') && state.phase === 'placement');
+        submitBtn.onclick = () => { window.__battleshipSubmitShips(); };
+        }
+        const playAgain = byId('playAgain');
+        if (playAgain) {
+        playAgain.onclick = () => {
+            const sock = getSocket();
+            sock.emit('reset-game', state.roomId);
+        };
+        }
+    }, 0);
+}
 
-    socket.on('attack-result', ({ hit, sunk }) => {
-        // show who got hit - use local role to determine perspective
+// --- Module export ---
+export default {
+    name: 'battleship',
+    metadata: { type: 'board', realtime: true },
+
+    async init({ roomId, userId, token, role, username } = {}) {
+        const sock = getSocket();
+
+        // Initialize state
+        state.roomId = roomId || sessionStorage.getItem('roomId');
+        state.userId = userId || sessionStorage.getItem('userId');
+        state.token = token || sessionStorage.getItem('token');
+        state.username = username || sessionStorage.getItem('username') || 'Player';
+        state.role = role || sessionStorage.getItem('role') || null;
+
+        // Chat wiring
+        setupChat(sock);
+
+        // --- Listeners ---
+        sock.on('connect', () => {
+        // connected
+        });
+
+        sock.on('assign-role', (r) => {
+        state.role = r;
+        try { sessionStorage.setItem('role', r); } catch {}
+        sock.emit('player-joined', { roomId: state.roomId, role: r, username: state.username });
+
+        const roleLabel = byId('roleLabel');
+        if (roleLabel) roleLabel.textContent = `Role: ${state.role}`;
+
+        const nameEl = document.getElementById(r === 'red' ? 'redPlayerName' : 'bluePlayerName');
+        if (nameEl) nameEl.textContent = state.username;
+
+        render();
+        });
+
+        sock.on('game-joined', ({ role: r, username: uname }) => {
+        if (r) {
+            state.role = r;
+            try { sessionStorage.setItem('role', r); } catch {}
+        }
+        const name = state.username || uname || 'Player';
+        sock.emit('player-joined', { roomId: state.roomId, role: state.role, username: name });
+
+        const roleLabel = byId('roleLabel');
+        if (roleLabel) roleLabel.textContent = `Role: ${state.role || 'pending'}`;
+
+        const nameEl = document.getElementById(r === 'red' ? 'redPlayerName' : 'bluePlayerName');
+        if (nameEl) nameEl.textContent = name;
+
+        render();
+        });
+
+        sock.on('all-players-info', (players) => {
+        if (players.red) {
+            const el = document.getElementById('redPlayerName');
+            if (el) el.textContent = players.red;
+        }
+        if (players.blue) {
+            const el = document.getElementById('bluePlayerName');
+            if (el) el.textContent = players.blue;
+        }
+
+        setStatus(`Players: ${Object.entries(players).map(([k,v]) => `${k}:${v}`).join(', ')}`);
+        sock.emit('ready-for-sync', state.roomId);
+        render();
+        });
+
+        sock.on('player-left', ({ username, role } = {}) => {
+        setStatus(`${username || 'A player'} left (${role})`);
+        sock.emit('ready-for-sync', state.roomId);
+        render();
+        });
+
+        sock.on('scoreUpdate', ({ redScore, blueScore }) => {
+        const rs = byId('redScore'); if (rs) rs.textContent = redScore;
+        const bs = byId('blueScore'); if (bs) bs.textContent = blueScore;
+        });
+
+        sock.on('sync-board', (boardData) => {
+        let board = boardData;
+        if (!board || !board.phase) {
+            board = { phase: 'placement', turn: 'red', ships: { red: [], blue: [] } };
+        }
+        applySyncBoard(board);
+        clearOldStatus();
+        _syncAttempts = 0;
+        if (_syncRetryTimer) { clearInterval(_syncRetryTimer); _syncRetryTimer = null; }
+
+        const turnEl = byId('turnIndicator');
+        if (turnEl) turnEl.textContent = `Turn: ${state.turn.toUpperCase()}`;
+        const phaseEl = byId('phaseLabel');
+        if (phaseEl) phaseEl.textContent = `Phase: ${state.phase === 'battle' ? 'IN-PROGRESS' : (state.phase || 'PLACEMENT').toUpperCase()}`;
+
+        render();
+        });
+
+        sock.on('placed-ships', ({ success } = {}) => {
+        if (success) {
+            setStatus('Ships placed. Waiting for opponent.');
+            sock.emit('ready-for-sync', state.roomId);
+        }
+        });
+
+        sock.on('attack-result', ({ hit, sunk, x, y, player } = {}) => {
         const msg = hit ? (sunk ? `Hit and sunk ${sunk}!` : 'Hit!') : 'Miss.';
         setStatus(msg);
-        // refresh board after attack-result
-        socket.emit('request-board', state.roomId);
-    });
+        if (player === state.role && state.oppFog?.[y]?.[x]) {
+            state.oppFog[y][x].hit = hit;
+            state.oppFog[y][x].miss = !hit;
+        }
+        render();
+        });
 
-    socket.on('game-over', ({ winner }) => {
+        sock.on('game-over', ({ winner, redScore, blueScore }) => {
         state.winner = winner;
         state.phase = 'finished';
         setStatus(`Game over. Winner: ${winner}`);
+
+        const rs = byId('redScore'); if (rs) rs.textContent = redScore;
+        const bs = byId('blueScore'); if (bs) bs.textContent = blueScore;
+
         render();
-    });
+        });
 
-    socket.on('action-error', ({ message }) => setStatus(`Error: ${message}`));
+        sock.on('game-reset', ({ board, currentPlayer } = {}) => {
+        if (!board) return;
+        applySyncBoard(board);
+        state.turn = currentPlayer || board.turn || 'red';
+        state.phase = board.phase || 'placement';
+        state.winner = board.winner || null;
+        state.placement.placed = [];
+        state.placement.dir = 'H';
+        setStatus('Game reset. Ready.');
+        render();
+        });
 
-    render();
+        sock.on('action-error', ({ message }) => {
+        setStatus(`Error: ${message}`);
+        });
+
+        // Reflect persisted role quickly
+        if (state.role) {
+        const roleLabel = byId('roleLabel');
+        if (roleLabel) roleLabel.textContent = `Role: ${state.role}`;
+        render();
+        }
+
+        // Join room/game and proactively request role
+        sock.emit('join-room', state.roomId);
+        sock.emit('join-game', state.roomId);
+        sock.emit('request-role', { roomId: state.roomId, userId: state.userId });
+
+        // Optional: server can reply with 'role-assigned'
+        sock.on('role-assigned', ({ role: assignedRole }) => {
+        if (!assignedRole) return;
+        state.role = assignedRole;
+        try { sessionStorage.setItem('role', assignedRole); } catch {}
+        const roleLabel = byId('roleLabel');
+        if (roleLabel) roleLabel.textContent = `Role: ${state.role}`;
+        render();
+        });
+
+        // Sync handshake
+        function startSyncHandshake() {
+        if (_syncRetryTimer) return;
+        _syncAttempts = 0;
+        const tick = () => {
+            if (_syncAttempts >= MAX_SYNC_ATTEMPTS) {
+            clearInterval(_syncRetryTimer);
+            _syncRetryTimer = null;
+            return;
+            }
+            socket.emit('ready-for-sync', state.roomId);
+            _syncAttempts++;
+        };
+        _syncRetryTimer = setInterval(tick, SYNC_RETRY_MS);
+        tick();
+        }
+        startSyncHandshake();
+    },
+
+    // Action wrappers
+    placeShips(layout) {
+        const sock = getSocket();
+        if (!state.roomId) return setStatus('No room.');
+        if (!state.role || state.role === 'spectator') return setStatus('Spectators cannot place ships.');
+        sock.emit('place-ships', { roomId: state.roomId, layout });
+    },
+
+    attack(x, y) {
+        const sock = getSocket();
+        if (!state.roomId) return setStatus('No room.');
+        if (!state.role || state.role === 'spectator') return setStatus('Spectators cannot attack.');
+        if (state.phase !== 'battle') return setStatus('Cannot attack outside battle phase.');
+        if (state.turn !== state.role) return setStatus('Not your turn.');
+        sock.emit('attack', { roomId: state.roomId, x, y });
     }
 };
 
