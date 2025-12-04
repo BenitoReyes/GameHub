@@ -34,8 +34,10 @@ const state = {
     oppFog: null,
     ownBoard: null,
     redScore: 0,
-    blueScore: 0
+    blueScore: 0,
+    lastPlayers: {}
 };
+
 
 
 // --- Sync handshake tunables ---
@@ -162,6 +164,16 @@ function applySyncBoard(serverBoard) {
     if (state.role === 'red') state.oppFog = hydrateFog(state.rawBlue);
     else if (state.role === 'blue') state.oppFog = hydrateFog(state.rawRed);
     else state.oppFog = hydrateBoardWithShips(state.shipsBlue.concat(state.shipsRed), []);
+}
+
+function systemMessage(text) {
+    const messagesEl = byId('chatMessages');
+    if (!messagesEl) return;
+    const msgEl = document.createElement('div');
+    msgEl.className = 'chat-msg system';
+    msgEl.textContent = `★ SYSTEM: ${text}`;
+    messagesEl.appendChild(msgEl);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
 // --- Placement interaction ---
@@ -454,25 +466,37 @@ export default {
 
 
         sock.on('all-players-info', (players) => {
-        if (players.red) {
-            const el = document.getElementById('redPlayerName');
-            if (el) el.textContent = players.red;
-        }
-        if (players.blue) {
-            const el = document.getElementById('bluePlayerName');
-            if (el) el.textContent = players.blue;
-        }
+            // Update name labels
+            if (players.red) {
+                const el = document.getElementById('redPlayerName');
+                if (el) el.textContent = players.red;
+            }
+            if (players.blue) {
+                const el = document.getElementById('bluePlayerName');
+                if (el) el.textContent = players.blue;
+            }
 
-        setStatus(`Players: ${Object.entries(players).map(([k,v]) => `${k}:${v}`).join(', ')}`);
-        sock.emit('ready-for-sync', state.roomId);
-        render();
+            // Compare with last known state
+            const changed = Object.entries(players).some(([role, name]) => state.lastPlayers[role] !== name);
+            if (changed) {
+                systemMessage(`Players joined: ${Object.entries(players).map(([k,v]) => `${k}=${v}`).join(', ')}`);
+                state.lastPlayers = { ...players };
+            }
+
+            setStatus(`Players: ${Object.entries(players).map(([k,v]) => `${k}:${v}`).join(', ')}`);
+            sock.emit('ready-for-sync', state.roomId);
+            render();
         });
+
+
 
         sock.on('player-left', ({ username, role } = {}) => {
-        setStatus(`${username || 'A player'} left (${role})`);
-        sock.emit('ready-for-sync', state.roomId);
-        render();
+            setStatus(`${username || 'A player'} left (${role})`);
+            systemMessage(`${username || 'A player'} left (${role})`);
+            sock.emit('ready-for-sync', state.roomId);
+            render();
         });
+
 
         sock.on('scoreUpdate', ({ redScore, blueScore }) => {
         const rs = byId('redScore'); if (rs) rs.textContent = redScore;

@@ -26,7 +26,7 @@ const roomOnlineUsers = new Map(); // roomId -> Set<userId>
 const disconnectTimers = new Map(); // userId -> Map<roomId, timeoutId>
 const deletingRooms = new Set(); // Set<roomId> - concurrent delete marker
 const recentRoomCreation = new Map(); // roomId -> timestamp (ms) to prevent immediate deletion on redirect
-const RECENT_ROOM_TTL_MS = 60000; // increased to 60s (1 min) to avoid accidental deletion on quick reloads
+const RECENT_ROOM_TTL_MS = 30000; // increased to 30s  to avoid accidental deletion on quick reloads
 const LEAVE_GRACE_PERIOD_MS = 30000; // grace period for leave-game cleanup (allow faster rejoin)
 
 app.use(express.static('FrontEnd')); // Serve frontend files

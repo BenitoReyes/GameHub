@@ -633,3 +633,7 @@
     font-size: 12px;
     text-align: center;
 }
+.chat-msg.system {
+    color: #888;
+    font-style: italic;
+}
