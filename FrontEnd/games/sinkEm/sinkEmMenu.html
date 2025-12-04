@@ -594,7 +594,7 @@
                 <span>CREATE<br>GAME</span>
             </a>
 
-            <a href="battleshipJoinGame.html" class="menu-btn">
+            <a href="sinkEmJoinGame.html" class="menu-btn">
                 <span class="icon">🎯</span>
                 <span>JOIN<br>GAME</span>
             </a>
@@ -612,14 +612,14 @@
         </div>
     </div>
 </body>
-<script src="../../stream-chat.bundle.js"></script>
+<script src="../../streamChat/stream-chat.bundle.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 <script type="module">
     import { getSocket } from '../commonLogic/socket.js';
     const socket = getSocket();
 
     document.getElementById('create-game-btn').addEventListener('click', () => {
-        socket.emit('create-game', { gameType: 'battleship' });
+        socket.emit('create-game', { gameType: 'sinkEm' });
     });
 
     // When the server confirms the room was created
@@ -630,10 +630,10 @@
         sessionStorage.setItem('token', token);
         sessionStorage.setItem('role', role);
         sessionStorage.setItem('username', username);
-        sessionStorage.setItem('gameType', gameType || 'battleship');
+        sessionStorage.setItem('gameType', gameType || 'sinkEm');
 
-        window.location.href = `battleship.html?roomId=${roomId}`;
+        window.location.href = `sinkEm.html?roomId=${roomId}`;
     });
 </script>
-<script src="../../theme.js"></script>
+<script src="../../Assets/theme.js"></script>
 </html>

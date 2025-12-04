@@ -3,11 +3,11 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Battleship</title>
+        <title>sinkEm</title>
         <link rel="stylesheet" href="../../styles.css" />
     </head>
-    <body class="battleship-page">
-        <a href="battleshipMenu.html" class="back-btn">◄ BACK</a>
+    <body class="sinkEm-page">
+        <a href="sinkEmMenu.html" class="back-btn">◄ BACK</a>
 
         <!-- Player Profiles -->
         <div class="profile-container profile-left profile-red">
@@ -40,10 +40,10 @@
         </div>
 
         <!-- Scripts -->
-        <script src="../../stream-chat.bundle.js"></script>
+        <script src="../../streamChat/stream-chat.bundle.js"></script>
         <script src="/socket.io/socket.io.js"></script>
         <script type="module">
-        import battleshipModule from './game.js';
+        import sinkEmModule from './game.js';
         import { getSocket } from '../commonLogic/socket.js';
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -58,8 +58,8 @@
         // Make sure we join the socket.io room right away
         socket.emit('join-room', roomId);
 
-        // Then run Battleship init logic
-        battleshipModule.init({ roomId, userId, token, role, username });
+        // Then run sinkEm init logic
+        sinkEmModule.init({ roomId, userId, token, role, username });
         </script>
     </body>
 </html>

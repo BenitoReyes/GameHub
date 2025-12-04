@@ -333,9 +333,9 @@
     </style>
 </head>
 <body>
-    <a href="battleshipMenu.html" class="back-btn">◄ BACK</a>
+    <a href="sinkEmMenu.html" class="back-btn">◄ BACK</a>
 
-    <!-- Floating chips themed for Battleship -->
+    <!-- Floating chips themed for sinkEm -->
     <div class="floating-chip chip-1">⛵</div>
     <div class="floating-chip chip-2">🚢</div>
     <div class="floating-chip chip-3">🚢</div>
@@ -343,7 +343,7 @@
 
     <!-- Manual room search -->
     <div class="searchContainer">
-        <h1>Join a Battleship Room</h1>
+        <h1>Join a sinkEm Room</h1>
         <input type="text" id="roomIdInput" placeholder="Enter roomId">
         <button id="joinRoom">Join Room</button>
     </div>
@@ -353,7 +353,7 @@
         <div class="icon-container">
         <button id="searchBtn" class="searchBtn">🔍</button>
         </div>
-        <h1>AVAILABLE BATTLESHIP ROOMS</h1>
+        <h1>AVAILABLE sinkEm ROOMS</h1>
         <div id="roomList" style="max-height: 300px; overflow-y: auto; margin-top: 20px; color: #fff; font-size: 12px; letter-spacing: 1px;">
         <!-- Room entries will be populated here -->
         </div>
@@ -376,18 +376,18 @@
         socket.emit('join-game', roomId);
         });
 
-        // Request only Battleship rooms
-        socket.emit('get-rooms', { gameType: 'battleship' });
+        // Request only sinkEm rooms
+        socket.emit('get-rooms', { gameType: 'sinkEm' });
         setInterval(() => {
-        socket.emit('get-rooms', { gameType: 'battleship' });
+        socket.emit('get-rooms', { gameType: 'sinkEm' });
         }, 2500);
 
         // Populate room list
         socket.on('room-list', (rooms) => {
-        const filtered = Array.isArray(rooms) ? rooms.filter(r => r.gameType === 'battleship') : [];
+        const filtered = Array.isArray(rooms) ? rooms.filter(r => r.gameType === 'sinkEm') : [];
         if (!filtered.length) {
             document.getElementById('roomList').innerHTML =
-            '<div style="color:#fff; padding: 12px;">No active Battleship rooms yet. Create one from the menu!</div>';
+            '<div style="color:#fff; padding: 12px;">No active sinkEm rooms yet. Create one from the menu!</div>';
             return;
         }
         document.getElementById('roomList').innerHTML = filtered.map(room => `
@@ -410,16 +410,16 @@
 
         // Persist session info and redirect after join
         socket.on('game-joined', ({ roomId, userId, token, role, username, gameType }) => {
-        if (gameType === 'battleship') {
+        if (gameType === 'sinkEm') {
             try {
                 sessionStorage.setItem('roomId', roomId);
                 if (userId) sessionStorage.setItem('userId', userId);
                 if (token) sessionStorage.setItem('token', token);
                 if (role) sessionStorage.setItem('role', role);
                 if (username) sessionStorage.setItem('username', username);
-                sessionStorage.setItem('gameType', gameType || 'battleship');
+                sessionStorage.setItem('gameType', gameType || 'sinkEm');
             } catch (e) { console.warn('Failed to persist sessionStorage on join:', e); }
-            window.location.href = `battleship.html?roomId=${roomId}`;
+            window.location.href = `sinkEm.html?roomId=${roomId}`;
         }
         });
     </script>

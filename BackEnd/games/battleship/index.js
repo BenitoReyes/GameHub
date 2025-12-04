@@ -1,4 +1,4 @@
-import { grid, getInitialState as logicInitialState, validateAction as validateAttack, applyAction as applyAttack, applyLayoutToState, validateLayout, getResult as logicGetResult, SIZE, SHIP_DEFS } from '../../../FrontEnd/games/battleship/battleshipLogic.js';
+import { grid, getInitialState as logicInitialState, validateAction as validateAttack, applyAction as applyAttack, applyLayoutToState, validateLayout, getResult as logicGetResult, SIZE, SHIP_DEFS } from '../../../FrontEnd/games/sinkEm/sinkEmLogic.js';
 
 export default {
   name: 'battleship',

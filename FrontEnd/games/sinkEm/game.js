@@ -8,7 +8,7 @@ const socket = getSocket();
 const SIZE = 10;
 const SHIPS = [
     { name: 'Carrier', size: 5 },
-    { name: 'Battleship', size: 4 },
+    { name: 'sinkEm', size: 4 },
     { name: 'Cruiser', size: 3 },
     { name: 'Submarine', size: 3 },
     { name: 'Destroyer', size: 2 }
@@ -49,14 +49,14 @@ let _syncAttempts = 0;
 // --- Helpers ---
 function byId(id) { return document.getElementById(id); }
 
-window.__battleshipToggleDir = function () {
+window.__sinkEmToggleDir = function () {
     if ((state.role === 'red' || state.role === 'blue') && state.phase === 'placement') {
         state.placement.dir = state.placement.dir === 'H' ? 'V' : 'H';
         render();
     }
 };
 
-window.__battleshipSubmitShips = function () {
+window.__sinkEmSubmitShips = function () {
     submitShips();
 };
 
@@ -371,12 +371,12 @@ function render() {
         const toggleBtn = byId('toggleDir');
         if (toggleBtn) {
         toggleBtn.disabled = !((state.role === 'red' || state.role === 'blue') && state.phase === 'placement');
-        toggleBtn.onclick = () => { window.__battleshipToggleDir(); };
+        toggleBtn.onclick = () => { window.__sinkEmToggleDir(); };
         }
         const submitBtn = byId('submitShips');
         if (submitBtn) {
         submitBtn.disabled = !((state.role === 'red' || state.role === 'blue') && state.phase === 'placement');
-        submitBtn.onclick = () => { window.__battleshipSubmitShips(); };
+        submitBtn.onclick = () => { window.__sinkEmSubmitShips(); };
         }
         const playAgain = byId('playAgain');
         if (playAgain) {
@@ -390,7 +390,7 @@ function render() {
 
 // --- Module export ---
 export default {
-    name: 'battleship',
+    name: 'sinkEm',
     metadata: { type: 'board', realtime: true },
 
     async init({ roomId, userId, token, role, username } = {}) {
@@ -449,7 +449,7 @@ export default {
                 socket: sock
                 });
             } catch (e) {
-                console.warn('[Battleship] initChat failed:', e);
+                console.warn('[sinkEm] initChat failed:', e);
             }
 
             // Emit player-joined
@@ -504,7 +504,7 @@ export default {
         });
 
         sock.on('sync-board', (boardData) => {
-            console.log('[Battleship] sync-board payload:', boardData);
+            console.log('[sinkEm] sync-board payload:', boardData);
 
             let board = boardData;
             if (!board || !board.phase) {

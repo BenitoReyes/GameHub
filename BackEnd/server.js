@@ -1,5 +1,6 @@
 import { StreamChat } from "stream-chat";
 import dotenv from "dotenv";
+import { fileURLToPath } from "url";
 dotenv.config({ path: "../.env" });
 import express from "express";
 import http from "http";
@@ -28,8 +29,10 @@ const deletingRooms = new Set(); // Set<roomId> - concurrent delete marker
 const recentRoomCreation = new Map(); // roomId -> timestamp (ms) to prevent immediate deletion on redirect
 const RECENT_ROOM_TTL_MS = 30000; // increased to 30s  to avoid accidental deletion on quick reloads
 const LEAVE_GRACE_PERIOD_MS = 30000; // grace period for leave-game cleanup (allow faster rejoin)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-app.use(express.static('FrontEnd')); // Serve frontend files
+app.use(express.static(path.join(__dirname, "../FrontEnd"))); // Serve frontend files
 app.use(express.json()); // Middleware to parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // parse form bodies if needed
 
@@ -163,9 +166,10 @@ function isAjax(req) {
 }
 
 // AI endpoints per game are now registered in their modules via the games loader
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'FrontEnd/index.html'));
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "../FrontEnd/login-signup/index.html"));
 });
+
 
 // Allows frontend to fetch the Stream API key
 app.get('/config', (req, res) => {
@@ -872,7 +876,7 @@ io.on('connection', (socket) => {
     });
 
 
-    // Battleship-specific handlers
+    // sinkEm-specific handlers
     socket.on('place-ships', async ({ roomId, layout } = {}) => {
       if (!userId) { socket.emit('action-error', { message: 'Not authenticated' }); return; }
 
