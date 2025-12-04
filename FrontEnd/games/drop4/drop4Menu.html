@@ -623,7 +623,7 @@
 <script type="module" src="drop4logic.js"></script>
 <script type="module">
     import { getSocket } from '../commonLogic/socket.js'; // adjust path if needed
-    import { connectChat } from '../commonLogic/chat.js';
+    import { initChat } from '../commonLogic/chat.js';
     import { showAlert } from '../commonLogic/ui.js';
 
     const socket = getSocket();
@@ -633,7 +633,7 @@
         socket.emit('create-game', { gameType: 'drop4' });
     });
 
-    socket.on('game-created', ({ roomId, userId, token, role, username, gameType }) => {
+    socket.on('game-created', async ({ roomId, userId, token, role, username, gameType }) => {
         console.log('Received game-created:', roomId);
 
         sessionStorage.setItem('roomId', roomId);
@@ -643,15 +643,23 @@
         sessionStorage.setItem('username', username);
         sessionStorage.setItem('gameType', gameType);
 
-        connectChat({
-        apiKey: 'YOUR_STREAM_API_KEY', // replace with actual key
-        userId,
-        token,
-        username
-        });
+        try {
+            const { apiKey } = await (await fetch('/config')).json();
+            await initChat({
+            apiKey,
+            userId,
+            token,
+            username,
+            roomId,
+            socket
+            });
+        } catch (err) {
+            console.warn('[Drop4] initChat failed:', err);
+        }
 
         window.location.href = `drop4.html?roomId=${roomId}`;
     });
+
 
     socket.on('error', (msg) => {
         console.error('Server error:', msg);

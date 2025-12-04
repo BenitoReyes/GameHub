@@ -19,9 +19,6 @@
         <span class="profile-username" id="bluePlayerName">Player 2</span>
         </div>
 
-        <!-- Game Status (moved up top) -->
-        <div id="status" class="status-msg">Waiting for sync...</div>
-
         <!-- Board container that render() controls -->
         <div id="board">Loading...</div>
 
@@ -57,6 +54,11 @@
         const username = sessionStorage.getItem('username');
 
         const socket = getSocket();
+
+        // Make sure we join the socket.io room right away
+        socket.emit('join-room', roomId);
+
+        // Then run Battleship init logic
         battleshipModule.init({ roomId, userId, token, role, username });
         </script>
     </body>

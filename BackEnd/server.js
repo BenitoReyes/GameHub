@@ -528,117 +528,43 @@ io.on('connection', (socket) => {
     await channel.create();
   });
 
+    socket.on('join-room', async (roomId) => {
+      if (!roomId || !userId) return;
 
-
-    socket.on('join-game', async (roomId) => {
-      if (!userId) { socket.emit('error', 'Not authenticated'); return; }
-      const token = serverClient.createToken(userId);
-
-      // Fetch room and participants
-      const room = await prisma.room.findFirst({
-        where: { id: roomId },
-        include: { participants: true },
-        orderBy: { createdAt: 'desc' }
-      });
-      if (!room) { socket.emit('error', 'Room not found'); return; }
-
-      const game = getGame(room.gameType);
-      if (!game) { socket.emit('error', 'Game module not found'); return; }
-
-      const user = await prisma.user.findUnique({ where: { id: userId } });
-      const username = user.username;
-
-      // Determine role/permission
-      let role, permission;
-      let participant = await prisma.roomParticipant.findUnique({
-        where: { userId_roomId: { userId, roomId } }
-      });
-
-      if (!participant) {
-        if (room.hostId === userId) {
-          // Ensure host is always red
-          role = 'red';
-          permission = 'HOST';
-        } else if (room.participants.length >= 2) {
-          role = 'spectator';
-          permission = 'SPECTATOR';
-        } else {
-          role = 'blue';
-          permission = 'PLAYER';
-        }
-      } else {
-        if (participant.permission === 'HOST') { role = 'red'; permission = 'HOST'; }
-        else if (participant.permission === 'PLAYER') { role = 'blue'; permission = 'PLAYER'; }
-        else { role = 'spectator'; permission = 'SPECTATOR'; }
-      }
-
-      // Upsert participant record
-      await prisma.roomParticipant.upsert({
-        where: { userId_roomId: { userId, roomId } },
-        create: { roomId, userId, permission },
-        update: { permission }
-      });
-
-      // Assign role to client
-      socket.emit('assign-role', role);
+      // Subscribe this socket to the Socket.IO room
       socket.join(roomId);
 
-      // Force leave other rooms
-      const prev = userRooms.get(userId) || new Set();
-      for (const r of Array.from(prev)) {
-        if (r !== roomId) await forceLeaveRoom(userId, r);
-      }
+      // Track presence in memory
+      const urs = userRooms.get(userId) || new Set();
+      urs.add(roomId);
+      userRooms.set(userId, urs);
 
-      // Cancel disconnect timers
-      const timers = disconnectTimers.get(userId);
-      if (timers && timers.has(roomId)) {
-        clearTimeout(timers.get(roomId));
-        timers.delete(roomId);
-        if (timers.size === 0) disconnectTimers.delete(userId);
-        console.log(`join-game: canceled disconnect cleanup for ${userId} in ${roomId}`);
-      }
+      const rset = roomOnlineUsers.get(roomId) || new Set();
+      rset.add(userId);
+      roomOnlineUsers.set(roomId, rset);
 
-      // Update players map
-      if (!roomPlayers.has(roomId)) roomPlayers.set(roomId, {});
-      const rp = roomPlayers.get(roomId);
-      if (role === 'red' || role === 'blue') rp[role] = username;
-      emitToRoom(roomId, 'all-players-info', rp);
+      console.log(`[join-room] user ${userId} socket ${socket.id} joined ${roomId}`);
 
-      // Send join confirmation
-      socket.emit('game-joined', {
-        roomId,
-        userId,
-        token,
-        role,
-        username,
-        gameType: room.gameType
-      });
-
-      // Sync board
-      emitToRoom(roomId, 'sync-board', room.board);
-      await emitRoomList();
-
-      // Ensure Stream channel exists and add member
-      const channel = serverClient.channel('messaging', roomId, {
-        created_by_id: room.hostId || userId, // host recorded as creator
-      });
-      await channel.watch(); // creates if missing
-      await channel.addMembers([userId]);
-
-      // Presence tracking
-      if (!userRooms.has(userId)) userRooms.set(userId, new Set());
-      userRooms.get(userId).add(roomId);
-      if (!roomOnlineUsers.has(roomId)) roomOnlineUsers.set(roomId, new Set());
-      roomOnlineUsers.get(roomId).add(userId);
-
-      // Update DB inRoom count
+      // Update DB inRoom count to reflect actual connected users
       try {
-        const rset = roomOnlineUsers.get(roomId) || new Set();
-        await prisma.room.update({ where: { id: roomId }, data: { inRoom: rset.size } });
-        console.log(`join-game: updated inRoom for ${roomId} to ${rset.size}`);
+        await prisma.room.update({
+          where: { id: roomId },
+          data: { inRoom: rset.size }
+        });
+        console.log(`[join-room] updated inRoom for ${roomId} to ${rset.size}`);
       } catch (err) {
-        console.error('join-game: failed to update inRoom', err);
+        console.error('[join-room] failed to update inRoom', err);
       }
+
+      // Optionally emit confirmation back to the client
+      socket.emit('room-joined', { roomId, userId });
+    });
+
+    
+    socket.on('chat-message', (msg) => {
+      // msg: { roomId, user, role, text }
+      if (!msg?.roomId || !msg?.text) return;
+      io.to(msg.roomId).emit('chat-message', msg);
     });
 
     // Handle player joining with username

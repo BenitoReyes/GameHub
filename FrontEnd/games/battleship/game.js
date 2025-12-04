@@ -1,5 +1,6 @@
 import { getSocket } from '../commonLogic/socket.js';
 import { showAlert } from '../commonLogic/ui.js';
+import { initChat } from '../commonLogic/chat.js';
 
 const socket = getSocket();
 
@@ -31,8 +32,11 @@ const state = {
     shipsRed: [],
     shipsBlue: [],
     oppFog: null,
-    ownBoard: null
+    ownBoard: null,
+    redScore: 0,
+    blueScore: 0
 };
+
 
 // --- Sync handshake tunables ---
 const SYNC_RETRY_MS = 1500;
@@ -197,12 +201,18 @@ function submitShips() {
     if (state.role === 'spectator') return setStatus('Spectators cannot submit ships.');
     const missing = SHIPS.filter(s => !state.placement.placed.find(p => p.name === s.name));
     if (missing.length) return setStatus(`Place all ships: ${missing.map(m => m.name).join(', ')}`);
+
     const sock = getSocket();
     sock.emit('place-ships', { roomId: state.roomId, layout: state.placement.placed });
+
+    // Immediately request sync so server can advance phase when both are ready
+    sock.emit('ready-for-sync', state.roomId);
+
     setStatus('Submitted. Waiting for opponent.');
     state.phase = 'waiting';
     render();
 }
+
 
 function tryAttack(x, y) {
     if (state.phase !== 'battle') return;
@@ -216,23 +226,31 @@ function tryAttack(x, y) {
 
 // --- Chat wiring (socket-based) ---
 function setupChat(sock) {
+    if (sock._chatWired) return;
+    sock._chatWired = true;
+
     const input = byId('chatInput');
     const sendBtn = byId('sendBtn');
     const messagesEl = byId('chatMessages');
 
     if (!input || !sendBtn || !messagesEl) return;
 
-    sendBtn.onclick = () => {
+    if (!sendBtn._wired) {
+        sendBtn.onclick = () => {
         const text = input.value.trim();
         if (!text) return;
         sock.emit('chat-message', {
-        roomId: state.roomId,
-        user: state.username,
-        role: state.role,
-        text
+            roomId: state.roomId,
+            user: state.username,
+            role: state.role,
+            text
         });
         input.value = '';
-    };
+        };
+        sendBtn._wired = true;
+    }
+
+    sock.off('chat-message'); // clear any prior listeners
 
     sock.on('chat-message', ({ user, role, text }) => {
         const msgEl = document.createElement('div');
@@ -242,6 +260,7 @@ function setupChat(sock) {
         messagesEl.scrollTop = messagesEl.scrollHeight;
     });
 }
+
 
 // --- Render ---
 function render() {
@@ -372,44 +391,67 @@ export default {
         state.username = username || sessionStorage.getItem('username') || 'Player';
         state.role = role || sessionStorage.getItem('role') || null;
 
-        // Chat wiring
-        setupChat(sock);
-
         // --- Listeners ---
-        sock.on('connect', () => {
-        // connected
-        });
+        sock.on('connect', () => { /* connected */ });
 
         sock.on('assign-role', (r) => {
-        state.role = r;
-        try { sessionStorage.setItem('role', r); } catch {}
-        sock.emit('player-joined', { roomId: state.roomId, role: r, username: state.username });
-
-        const roleLabel = byId('roleLabel');
-        if (roleLabel) roleLabel.textContent = `Role: ${state.role}`;
-
-        const nameEl = document.getElementById(r === 'red' ? 'redPlayerName' : 'bluePlayerName');
-        if (nameEl) nameEl.textContent = state.username;
-
-        render();
-        });
-
-        sock.on('game-joined', ({ role: r, username: uname }) => {
-        if (r) {
             state.role = r;
             try { sessionStorage.setItem('role', r); } catch {}
-        }
-        const name = state.username || uname || 'Player';
-        sock.emit('player-joined', { roomId: state.roomId, role: state.role, username: name });
+            sock.emit('player-joined', { roomId: state.roomId, role: r, username: state.username });
 
-        const roleLabel = byId('roleLabel');
-        if (roleLabel) roleLabel.textContent = `Role: ${state.role || 'pending'}`;
+            const roleLabel = byId('roleLabel');
+            if (roleLabel) roleLabel.textContent = `Role: ${state.role}`;
 
-        const nameEl = document.getElementById(r === 'red' ? 'redPlayerName' : 'bluePlayerName');
-        if (nameEl) nameEl.textContent = name;
+            const nameEl = document.getElementById(r === 'red' ? 'redPlayerName' : 'bluePlayerName');
+            if (nameEl) nameEl.textContent = state.username;
 
-        render();
+            render();
         });
+
+
+        sock.on('game-joined', async ({ roomId, userId, token, role: r, username: uname }) => {
+            // Update state with fresh values from server
+            state.roomId = roomId;
+            state.userId = userId;
+            state.token = token;
+            state.role = r;
+            state.username = uname || 'Player';
+
+            try {
+            sessionStorage.setItem('roomId', roomId);
+            sessionStorage.setItem('userId', userId);
+            sessionStorage.setItem('token', token);
+            sessionStorage.setItem('role', r);
+            sessionStorage.setItem('username', uname || 'Player');
+            } catch {}
+
+            // Wire chat with correct credentials
+            try {
+                const apiKey = window.STREAM_API_KEY || (await (await fetch('/config')).json()).apiKey;
+                await initChat({
+                apiKey,
+                userId: state.userId,
+                token: state.token,
+                username: state.username,
+                roomId: state.roomId,
+                socket: sock
+                });
+            } catch (e) {
+                console.warn('[Battleship] initChat failed:', e);
+            }
+
+            // Emit player-joined
+            sock.emit('player-joined', { roomId: state.roomId, role: state.role, username: state.username });
+
+            const roleLabel = byId('roleLabel');
+            if (roleLabel) roleLabel.textContent = `Role: ${state.role || 'pending'}`;
+
+            const nameEl = document.getElementById(r === 'red' ? 'redPlayerName' : 'bluePlayerName');
+            if (nameEl) nameEl.textContent = state.username;
+            setupChat(sock);
+            render();
+        });
+
 
         sock.on('all-players-info', (players) => {
         if (players.red) {
@@ -438,22 +480,26 @@ export default {
         });
 
         sock.on('sync-board', (boardData) => {
-        let board = boardData;
-        if (!board || !board.phase) {
-            board = { phase: 'placement', turn: 'red', ships: { red: [], blue: [] } };
-        }
-        applySyncBoard(board);
-        clearOldStatus();
-        _syncAttempts = 0;
-        if (_syncRetryTimer) { clearInterval(_syncRetryTimer); _syncRetryTimer = null; }
+            console.log('[Battleship] sync-board payload:', boardData);
 
-        const turnEl = byId('turnIndicator');
-        if (turnEl) turnEl.textContent = `Turn: ${state.turn.toUpperCase()}`;
-        const phaseEl = byId('phaseLabel');
-        if (phaseEl) phaseEl.textContent = `Phase: ${state.phase === 'battle' ? 'IN-PROGRESS' : (state.phase || 'PLACEMENT').toUpperCase()}`;
+            let board = boardData;
+            if (!board || !board.phase) {
+                board = { phase: 'placement', turn: 'red', ships: { red: [], blue: [] } };
+            }
 
-        render();
+            applySyncBoard(board); // maps 'in-progress' -> 'battle'
+            clearOldStatus();
+            _syncAttempts = 0;
+            if (_syncRetryTimer) { clearInterval(_syncRetryTimer); _syncRetryTimer = null; }
+
+            const turnEl = byId('turnIndicator');
+            if (turnEl) turnEl.textContent = `Turn: ${state.turn.toUpperCase()}`;
+            const phaseEl = byId('phaseLabel');
+            if (phaseEl) phaseEl.textContent = `Phase: ${state.phase === 'battle' ? 'IN-PROGRESS' : (state.phase || 'PLACEMENT').toUpperCase()}`;
+
+            render();
         });
+
 
         sock.on('placed-ships', ({ success } = {}) => {
         if (success) {
@@ -472,38 +518,50 @@ export default {
         render();
         });
 
-        sock.on('game-over', ({ winner, redScore, blueScore }) => {
-        state.winner = winner;
-        state.phase = 'finished';
-        setStatus(`Game over. Winner: ${winner}`);
+        sock.on('game-over', ({ winner }) => {
+            state.winner = winner;
+            state.phase = 'finished';
+            setStatus(`Game over. Winner: ${winner}`);
 
-        const rs = byId('redScore'); if (rs) rs.textContent = redScore;
-        const bs = byId('blueScore'); if (bs) bs.textContent = blueScore;
+            // Increment winner’s score
+            if (winner === 'red') state.redScore++;
+            if (winner === 'blue') state.blueScore++;
 
-        render();
+            // Update scoreboard UI
+            const rs = byId('redScore'); if (rs) rs.textContent = state.redScore;
+            const bs = byId('blueScore'); if (bs) bs.textContent = state.blueScore;
+
+            render();
         });
+
 
         sock.on('game-reset', ({ board, currentPlayer } = {}) => {
-        if (!board) return;
-        applySyncBoard(board);
-        state.turn = currentPlayer || board.turn || 'red';
-        state.phase = board.phase || 'placement';
-        state.winner = board.winner || null;
-        state.placement.placed = [];
-        state.placement.dir = 'H';
-        setStatus('Game reset. Ready.');
-        render();
+            if (!board) return;
+            applySyncBoard(board);
+            state.turn = currentPlayer || board.turn || 'red';
+            state.phase = board.phase || 'placement';
+            state.winner = board.winner || null;
+            state.placement.placed = [];
+            state.placement.dir = 'H';
+            setStatus('Game reset. Ready.');
+
+            // 🔑 Keep scores as-is (don’t reset to 0)
+            const rs = byId('redScore'); if (rs) rs.textContent = state.redScore;
+            const bs = byId('blueScore'); if (bs) bs.textContent = state.blueScore;
+
+            render();
         });
 
+
         sock.on('action-error', ({ message }) => {
-        setStatus(`Error: ${message}`);
+            setStatus(`Error: ${message}`);
         });
 
         // Reflect persisted role quickly
         if (state.role) {
-        const roleLabel = byId('roleLabel');
-        if (roleLabel) roleLabel.textContent = `Role: ${state.role}`;
-        render();
+            const roleLabel = byId('roleLabel');
+            if (roleLabel) roleLabel.textContent = `Role: ${state.role}`;
+            render();
         }
 
         // Join room/game and proactively request role
@@ -513,32 +571,34 @@ export default {
 
         // Optional: server can reply with 'role-assigned'
         sock.on('role-assigned', ({ role: assignedRole }) => {
-        if (!assignedRole) return;
-        state.role = assignedRole;
-        try { sessionStorage.setItem('role', assignedRole); } catch {}
-        const roleLabel = byId('roleLabel');
-        if (roleLabel) roleLabel.textContent = `Role: ${state.role}`;
-        render();
+            if (!assignedRole) return;
+            state.role = assignedRole;
+            try { sessionStorage.setItem('role', assignedRole); } catch {}
+            const roleLabel = byId('roleLabel');
+            if (roleLabel) roleLabel.textContent = `Role: ${state.role}`;
+            render();
         });
 
         // Sync handshake
         function startSyncHandshake() {
-        if (_syncRetryTimer) return;
-        _syncAttempts = 0;
-        const tick = () => {
-            if (_syncAttempts >= MAX_SYNC_ATTEMPTS) {
-            clearInterval(_syncRetryTimer);
-            _syncRetryTimer = null;
-            return;
+            if (_syncRetryTimer) return;
+            _syncAttempts = 0;
+            const tick = () => {
+                if (_syncAttempts >= MAX_SYNC_ATTEMPTS) {
+                clearInterval(_syncRetryTimer);
+                _syncRetryTimer = null;
+                return;
+                }
+                socket.emit('ready-for-sync', state.roomId);
+                _syncAttempts++;
+            };
+            _syncRetryTimer = setInterval(tick, SYNC_RETRY_MS);
+            tick();
             }
-            socket.emit('ready-for-sync', state.roomId);
-            _syncAttempts++;
-        };
-        _syncRetryTimer = setInterval(tick, SYNC_RETRY_MS);
-        tick();
-        }
-        startSyncHandshake();
-    },
+            startSyncHandshake();
+
+        },
+
 
     // Action wrappers
     placeShips(layout) {
