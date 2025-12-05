@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Drop4 - Single Player</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background: linear-gradient(180deg, #1a1a2e 0%, #0f3460 100%);
+            color: #e6eef8;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Animated stars background */
+        body::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background-image: 
+                radial-gradient(2px 2px at 20% 30%, white, transparent),
+                radial-gradient(2px 2px at 60% 70%, white, transparent),
+                radial-gradient(1px 1px at 50% 50%, white, transparent),
+                radial-gradient(1px 1px at 80% 10%, white, transparent),
+                radial-gradient(2px 2px at 90% 60%, white, transparent);
+            background-size: 200px 200px;
+            animation: stars 25s linear infinite;
+            opacity: 0.5;
+            z-index: 0;
+        }
+
+        @keyframes stars {
+            from { transform: translateY(0) translateX(0); }
+            to { transform: translateY(-200px) translateX(-100px); }
+        }
+
+        /* Back Button */
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000, 0 4px 0 #000;
+            padding: 10px 16px;
+            font-size: 10px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            text-decoration: none;
+            transition: all 0.1s;
+            z-index: 100;
+        }
+
+        .back-btn:hover {
+            background: linear-gradient(180deg, #f87171 0%, #ef4444 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 0 0 4px #000, 0 6px 0 #000;
+        }
+
+        .back-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 0 0 4px #000, 0 2px 0 #000;
+        }
+
+        /* Player Profiles */
+        .profile-container {
+            position: fixed;
+            top: 100px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 50;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 12px 16px;
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000;
+        }
+
+        .profile-left {
+            left: 20px;
+            flex-direction: row;
+        }
+
+        .profile-right {
+            right: 20px;
+            flex-direction: row-reverse;
+        }
+
+        .profile-avatar {
+            width: 48px;
+            height: 48px;
+            border: 3px solid;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .profile-red .profile-avatar {
+            border-color: #ef4444;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+        }
+
+        .profile-blue .profile-avatar {
+            border-color: #3b82f6;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+        }
+
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            image-rendering: pixelated;
+        }
+
+        .profile-username {
+            font-size: 10px;
+            color: #fff;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        /* Game Wrapper */
+        .game-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            position: relative;
+            z-index: 1;
+            padding: 20px;
+            margin-top: 100px;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 25px;
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .small {
+            font-size: 10px;
+            color: #fbbf24;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        .difficulty {
+            background: #000;
+            color: #fff;
+            border: 3px solid #fff;
+            padding: 8px 12px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 8px;
+            cursor: pointer;
+        }
+
+        .difficulty:focus {
+            outline: none;
+            border-color: #fbbf24;
+        }
+
+        /* Board Container */
+        .board-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .board-wrapper {
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            border: 6px solid #fff;
+            box-shadow: 0 0 0 6px #000, 0 8px 0 #000;
+            padding: 20px;
+        }
+
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(7, 60px);
+            grid-template-rows: repeat(6, 60px);
+            gap: 8px;
+            background: #000;
+            padding: 12px;
+            border: 4px solid #fff;
+        }
+
+        .cell {
+            width: 60px;
+            height: 60px;
+            background: #1a1a2e;
+            border: 3px solid #2d3748;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.1s;
+            position: relative;
+            image-rendering: pixelated;
+        }
+
+        .cell:hover {
+            background: #2d3748;
+            border-color: #4a5568;
+            transform: scale(1.05);
+        }
+
+        .piece {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            image-rendering: pixelated;
+            animation: dropIn 0.3s ease-out;
+        }
+
+        @keyframes dropIn {
+            from {
+                transform: translateY(-400px) scale(0.8);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+
+        .piece img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            image-rendering: pixelated;
+        }
+
+        /* Turn Indicator */
+        #turnIndicator {
+            background: #000;
+            color: #fff;
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000;
+            padding: 12px 24px;
+            font-size: 12px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            min-width: 200px;
+        }
+
+        #turnIndicator.red {
+            border-color: #ef4444;
+            color: #ef4444;
+            animation: pulse 1s infinite;
+        }
+
+        #turnIndicator.blue {
+            border-color: #3b82f6;
+            color: #3b82f6;
+            animation: pulse 1s infinite;
+        }
+
+        #turnIndicator.gameover {
+            border-color: #fbbf24;
+            color: #fbbf24;
+            font-size: 14px;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Game Buttons */
+        #newGameBtn, #playAgainBtn {
+            background: linear-gradient(180deg, #4ecdc4 0%, #44a08d 100%);
+            color: #fff;
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000, 0 4px 0 #000;
+            padding: 10px 20px;
+            font-size: 10px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            transition: all 0.1s;
+            text-transform: uppercase;
+        }
+
+        #newGameBtn:hover, #playAgainBtn:hover {
+            background: linear-gradient(180deg, #5eddd4 0%, #54b09d 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 0 0 4px #000, 0 6px 0 #000;
+        }
+
+        #newGameBtn:active, #playAgainBtn:active {
+            transform: translateY(2px);
+            box-shadow: 0 0 0 4px #000, 0 2px 0 #000;
+        }
+
+        #playAgainBtn {
+            display: none;
+            background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%);
+            color: #000;
+            margin-bottom: 15px;
+        }
+
+        #playAgainBtn:hover {
+            background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .profile-container {
+                padding: 8px 12px;
+                top: 90px;
+            }
+
+            .game-wrapper {
+                margin-top: 80px;
+            }
+
+            #game-board {
+                grid-template-columns: repeat(7, 45px);
+                grid-template-rows: repeat(6, 45px);
+                gap: 6px;
+            }
+
+            .cell {
+                width: 45px;
+                height: 45px;
+            }
+
+            .piece {
+                width: 38px;
+                height: 38px;
+            }
+
+            .controls {
+                flex-direction: column;
+                gap: 10px;
+                padding: 12px 20px;
+            }
+
+            #turnIndicator {
+                font-size: 10px;
+                padding: 10px 18px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #game-board {
+                grid-template-columns: repeat(7, 38px);
+                grid-template-rows: repeat(6, 38px);
+                gap: 4px;
+            }
+
+            .cell {
+                width: 38px;
+                height: 38px;
+                border-width: 2px;
+            }
+
+            .piece {
+                width: 32px;
+                height: 32px;
+            }
+        }
+    </style>
+</head>
+<body class="game-page">
+    <a href="drop4Menu.html" class="back-btn">◄ BACK</a>
+    
+    <div class="profile-container profile-left profile-red">
+        <div class="profile-avatar">
+            <img alt="You" src="../../Assets/player-red.png"/>
+        </div>
+        <span class="profile-username" id="redPlayerName">You</span>
+    </div>
+    
+    <div class="profile-container profile-right profile-blue">
+        <div class="profile-avatar">
+            <img alt="AI" src="../../Assets/player-blue.png"/>
+        </div>
+        <span class="profile-username" id="bluePlayerName">Computer</span>
+    </div>
+
+    <div class="game-wrapper">
+        <div class="controls">
+            <label class="small">Difficulty:</label>
+            <select id="difficulty" class="difficulty">
+                <option value="2">Easy</option>
+                <option value="4" selected>Medium</option>
+                <option value="6">Hard</option>
+            </select>
+            <button id="newGameBtn">New Game</button>
+        </div>
+
+        <div class="board-container">
+            <div class="board-wrapper">
+                <div id="game-board">
+                    <!-- cells generated by script -->
+                </div>
+            </div>
+            <button id="playAgainBtn">Play Again</button>
+            <div id="turnIndicator">Turn: RED</div>
+        </div>
+    </div>
+
+    <script>
+        const ROWS = 6, COLS = 7;
+        const PLAYER_RED = 'red', PLAYER_BLUE = 'blue';
+        let board = Array.from({length: ROWS}, ()=> Array(COLS).fill(0));
+        let currentPlayer = PLAYER_RED;
+        let gameOver = false;
+
+        const boardEl = document.getElementById('game-board');
+        const turnEl = document.getElementById('turnIndicator');
+        const difficultyEl = document.getElementById('difficulty');
+        const newGameBtn = document.getElementById('newGameBtn');
+        const playAgainBtn = document.getElementById('playAgainBtn');
+
+        function renderBoard(){
+            boardEl.innerHTML = '';
+            for(let r=0;r<ROWS;r++){
+                for(let c=0;c<COLS;c++){
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    cell.addEventListener('click', ()=> onCellClick(c));
+                    boardEl.appendChild(cell);
+                    const val = board[r][c];
+                    if(val && (val === 'red' || val === 'blue')){
+                        const pieceDiv = document.createElement('div');
+                        pieceDiv.className = 'piece ' + val;
+                        const img = document.createElement('img');
+                        img.src = val === 'red' ? '../../Assets/GHCCoin.png' : '../../Assets/GHRBCoin.png';
+                        pieceDiv.appendChild(img);
+                        cell.appendChild(pieceDiv);
+                    }
+                }
+            }
+            updateTurnIndicator();
+        }
+
+        function updateTurnIndicator(){
+            if(gameOver){ 
+                turnEl.className = 'gameover';
+                return; 
+            }
+            if(currentPlayer === PLAYER_RED){ 
+                turnEl.textContent = 'Turn: RED'; 
+                turnEl.className = 'red'; 
+            } else { 
+                turnEl.textContent = 'Turn: BLUE'; 
+                turnEl.className = 'blue'; 
+            }
+        }
+
+        function dropLocal(col, player){
+            for(let r=ROWS-1;r>=0;r--){
+                if(board[r][col] === 0){ board[r][col] = player; return r; }
+            }
+            return -1;
+        }
+
+        function checkWinLocal(player){
+            // horizontal
+            for(let r=0;r<ROWS;r++){
+                for(let c=0;c<=COLS-4;c++){
+                    if(board[r][c]===player && board[r][c+1]===player && board[r][c+2]===player && board[r][c+3]===player) return true;
+                }
+            }
+            // vertical
+            for(let c=0;c<COLS;c++){
+                for(let r=0;r<=ROWS-4;r++){
+                    if(board[r][c]===player && board[r+1][c]===player && board[r+2][c]===player && board[r+3][c]===player) return true;
+                }
+            }
+            // diag TL-BR
+            for(let r=0;r<=ROWS-4;r++){
+                for(let c=0;c<=COLS-4;c++){
+                    if(board[r][c]===player && board[r+1][c+1]===player && board[r+2][c+2]===player && board[r+3][c+3]===player) return true;
+                }
+            }
+            // diag BL-TR
+            for(let r=3;r<ROWS;r++){
+                for(let c=0;c<=COLS-4;c++){
+                    if(board[r][c]===player && board[r-1][c+1]===player && board[r-2][c+2]===player && board[r-3][c+3]===player) return true;
+                }
+            }
+            return false;
+        }
+
+        function isBoardFull(){
+            return board.every(row => row.every(cell => cell !== 0));
+        }
+
+        async function onCellClick(col){
+            if(gameOver) return;
+            if(currentPlayer !== PLAYER_RED) return;
+            const row = dropLocal(col, PLAYER_RED);
+            if(row === -1) return;
+            renderBoard();
+            if(checkWinLocal(PLAYER_RED)){
+                gameOver = true; 
+                turnEl.textContent = '🎉 RED WINS! 🎉';
+                updateTurnIndicator();
+                playAgainBtn.style.display = 'block';
+                return;
+            }
+            if(isBoardFull()){ 
+                gameOver = true;
+                turnEl.textContent = '⚖️ DRAW! ⚖️';
+                updateTurnIndicator();
+                playAgainBtn.style.display = 'block';
+                return; 
+            }
+            currentPlayer = PLAYER_BLUE; 
+            updateTurnIndicator();
+            await aiMove();
+        }
+
+        async function aiMove(){
+            const boardForApi = board.map(r => r.map(c => c === 0 ? null : c));
+            const depth = parseInt(difficultyEl.value, 10) || 4;
+            try{
+                const res = await fetch('/api/drop4/suggest', {
+                    method:'POST', 
+                    headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ board: boardForApi, currentPlayer: PLAYER_BLUE, depth })
+                });
+                if(!res.ok) throw new Error('AI request failed');
+                const data = await res.json();
+                const col = data.column;
+                if(typeof col !== 'number' || col < 0 || col >= COLS){
+                    for(let c=0;c<COLS;c++){ 
+                        if(board[0][c]===0){ 
+                            applyAiCol(c); 
+                            break; 
+                        } 
+                    }
+                } else {
+                    applyAiCol(col);
+                }
+            }catch(err){
+                console.error('AI error',err);
+                for(let c=0;c<COLS;c++){ 
+                    if(board[0][c]===0){ 
+                        applyAiCol(c); 
+                        break; 
+                    } 
+                }
+            }
+        }
+
+        function applyAiCol(col){
+            const row = dropLocal(col, PLAYER_BLUE);
+            renderBoard();
+            if(checkWinLocal(PLAYER_BLUE)){
+                gameOver = true; 
+                turnEl.textContent = '💻 BLUE WINS! 💻';
+                updateTurnIndicator();
+                playAgainBtn.style.display = 'block';
+                return;
+            }
+            if(isBoardFull()){ 
+                gameOver = true;
+                turnEl.textContent = '⚖️ DRAW! ⚖️';
+                updateTurnIndicator();
+                playAgainBtn.style.display = 'block';
+                return; 
+            }
+            currentPlayer = PLAYER_RED; 
+            updateTurnIndicator();
+        }
+
+        function newGame(){
+            board = Array.from({length: ROWS}, ()=> Array(COLS).fill(0));
+            currentPlayer = PLAYER_RED; 
+            gameOver=false;
+            playAgainBtn.style.display = 'none';
+            renderBoard();
+        }
+
+        newGameBtn.addEventListener('click', ()=> newGame());
+        playAgainBtn.addEventListener('click', ()=> newGame());
+
+        (function init(){
+            boardEl.style.display = 'grid';
+            boardEl.style.gridTemplateColumns = 'repeat(7,1fr)';
+            boardEl.style.gridTemplateRows = 'repeat(6,1fr)';
+            boardEl.style.gap = '8px';
+            renderBoard();
+        })();
+    </script>
+</body>
+</html>
