@@ -1,7 +1,7 @@
 import { grid, getInitialState as logicInitialState, validateAction as validateAttack, applyAction as applyAttack, applyLayoutToState, validateLayout, getResult as logicGetResult, SIZE, SHIP_DEFS } from '../../../FrontEnd/games/sinkEm/sinkEmLogic.js';
 
 export default {
-  name: 'battleship',
+  name: 'sinkEm',
   metadata: { type: 'board', realtime: false, rows: 10, cols: 10 },
 
   getInitialState() {

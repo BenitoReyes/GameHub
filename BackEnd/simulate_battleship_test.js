@@ -24,7 +24,7 @@ function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
   host.on('action-error', (e)=>console.log('[HOST] action-error', e));
 
   // create a game as host
-  host.emit('create-game', { gameType: 'battleship' });
+  host.emit('create-game', { gameType: 'sinkEm' });
 
   let roomId = null;
   host.on('game-created', (d)=>{ roomId = d.roomId; console.log('[HOST] got roomId', roomId); });
@@ -59,14 +59,14 @@ function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
   // Prepare valid layouts for host (red) and joiner (blue)
   const redLayout = [
     { name: 'Carrier', x:0, y:0, dir:'H' },
-    { name: 'Battleship', x:0, y:1, dir:'H' },
+    { name: 'Warship', x:0, y:1, dir:'H' },
     { name: 'Cruiser', x:0, y:2, dir:'H' },
     { name: 'Submarine', x:0, y:3, dir:'H' },
     { name: 'Destroyer', x:0, y:4, dir:'H' }
   ];
   const blueLayout = [
     { name: 'Carrier', x:0, y:5, dir:'H' },
-    { name: 'Battleship', x:0, y:6, dir:'H' },
+    { name: 'Warship', x:0, y:6, dir:'H' },
     { name: 'Cruiser', x:0, y:7, dir:'H' },
     { name: 'Submarine', x:0, y:8, dir:'H' },
     { name: 'Destroyer', x:0, y:9, dir:'H' }

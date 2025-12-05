@@ -8,7 +8,7 @@ const socket = getSocket();
 const SIZE = 10;
 const SHIPS = [
     { name: 'Carrier', size: 5 },
-    { name: 'sinkEm', size: 4 },
+    { name: 'Warship', size: 4 },
     { name: 'Cruiser', size: 3 },
     { name: 'Submarine', size: 3 },
     { name: 'Destroyer', size: 2 }
@@ -569,7 +569,7 @@ export default {
             state.placement.dir = 'H';
             setStatus('Game reset. Ready.');
 
-            // 🔑 Keep scores as-is (don’t reset to 0)
+            // Keep scores as-is (don’t reset to 0)
             const rs = byId('redScore'); if (rs) rs.textContent = state.redScore;
             const bs = byId('blueScore'); if (bs) bs.textContent = state.blueScore;
 

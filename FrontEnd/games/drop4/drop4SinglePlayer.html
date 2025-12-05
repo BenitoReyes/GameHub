@@ -390,14 +390,14 @@
     
     <div class="profile-container profile-left profile-red">
         <div class="profile-avatar">
-            <img alt="You" src="Assets/player-red.png"/>
+            <img alt="You" src="../../Assets/player-red.png"/>
         </div>
         <span class="profile-username" id="redPlayerName">You</span>
     </div>
     
     <div class="profile-container profile-right profile-blue">
         <div class="profile-avatar">
-            <img alt="AI" src="Assets/player-blue.png"/>
+            <img alt="AI" src="../../Assets/player-blue.png"/>
         </div>
         <span class="profile-username" id="bluePlayerName">Computer</span>
     </div>
@@ -452,7 +452,7 @@
                         const pieceDiv = document.createElement('div');
                         pieceDiv.className = 'piece ' + val;
                         const img = document.createElement('img');
-                        img.src = val === 'red' ? 'Assets/GHCCoin.png' : 'Assets/GHRBCoin.png';
+                        img.src = val === 'red' ? '../../Assets/GHCCoin.png' : '../../Assets/GHRBCoin.png';
                         pieceDiv.appendChild(img);
                         cell.appendChild(pieceDiv);
                     }

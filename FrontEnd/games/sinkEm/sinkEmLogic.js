@@ -4,7 +4,7 @@ export const SIZE = 10;
 
 export const SHIP_DEFS = {
     Carrier: 5,
-    Battleship: 4,
+    Warship: 4,
     Cruiser: 3,
     Submarine: 3,
     Destroyer: 2
