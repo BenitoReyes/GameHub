@@ -765,6 +765,21 @@ io.on('connection', (socket) => {
       }
     });
 
+    socket.on('leaderboard-update', async ({roomId,userId,gameType,score})=>{
+      if(gameType=='sinkEm'){
+        prisma.leaderboard.upsert({
+          where: { gameType_userId: { gameType, userId } },
+          create: { gameType: gameType, userId: userId, wins: 0 },
+          update: { wins: score }
+        })
+      } else{
+        prisma.leaderboard.upsert({
+          where: { gameType_userId: { gameType, userId } },
+          create: { gameType: gameType, userId: userId, wins: 0 },
+          update: { wins:{increment: 1}}
+        })
+      }
+    });
     socket.on('getScores', async (roomId) => {
       const room = await prisma.room.findUnique({
         where: { id: roomId },

@@ -287,6 +287,12 @@ function initializeBoard() {
         gameOver = true; // prevent duplicate local moves until server-restart
         // Request server to get latest scores and result
         try { socket.emit('getScores', state.scriptRoomId); } catch (e) { /* ignore */ }
+        socket.emit('leaderboard-update',({
+          roomId: state.scriptRoomId,
+          userId: state.userId,
+          gameType: state.gameType,
+          score: null
+        }))
       } else if (isDraw()) {
         gameOver = true;
         try { socket.emit('getScores', state.scriptRoomId); } catch (e) { /* ignore */ }

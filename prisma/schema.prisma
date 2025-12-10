@@ -13,6 +13,7 @@ model User {
   password         String
   username         String            @unique
   createdAt        DateTime          @default(now())
+  leaderboards     Leaderboard[]
   rooms            Room[]            @relation("RoomHost")
   roomParticipants RoomParticipant[]
 }
@@ -20,13 +21,13 @@ model User {
 model Room {
   id           String            @id @default(uuid())
   hostId       String
-  gameType     String            @default("drop4")
   isPublic     Boolean           @default(true)
   createdAt    DateTime          @default(now())
   board        Json
   redScore     Int               @default(0)
   blueScore    Int               @default(0)
   inRoom       Int               @default(0)
+  gameType     String            @default("drop4")
   host         User              @relation("RoomHost", fields: [hostId], references: [id])
   participants RoomParticipant[]
 }
@@ -51,6 +52,17 @@ model Message {
   text        String
   timestamp   DateTime        @default(now())
   participant RoomParticipant @relation(fields: [senderId, roomId], references: [userId, roomId])
+}
+
+model Leaderboard {
+  id        Int      @id @default(autoincrement())
+  gameType  String
+  userId    String
+  wins      Int      @default(0)
+  updatedAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([gameType, userId])
 }
 
 enum Permission {
