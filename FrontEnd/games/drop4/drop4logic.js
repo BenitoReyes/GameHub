@@ -287,6 +287,11 @@ function initializeBoard() {
         gameOver = true; // prevent duplicate local moves until server-restart
         // Request server to get latest scores and result
         try { socket.emit('getScores', state.scriptRoomId); } catch (e) { /* ignore */ }
+        socket.emit('leaderboard-update',({
+          userId: state.userId,
+          gameType: 'drop4',
+          score: null
+        }))
       } else if (isDraw()) {
         gameOver = true;
         try { socket.emit('getScores', state.scriptRoomId); } catch (e) { /* ignore */ }
@@ -529,6 +534,7 @@ socket.on('action-error', ({ message }) => {
 // Server signals that a game has finished (winner or draw). Use server's canonical result.
 socket.on('game-over', ({ winner, draw, board, redScore, blueScore }) => {
   console.log('game-over event received:', { winner, draw });
+  socket.emit('add-totalgames',state.userId);
   gameOver = true;
   state.lastWinner = winner;
   if (board) {

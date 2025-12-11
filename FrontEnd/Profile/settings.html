@@ -1362,9 +1362,8 @@
             👤 PROFILE
             <div class="profile-dropdown" id="profileDropdown">
                 <a href="profile.html">► View Profile</a>
-                <a href="settings.html">► Settings</a>
-                <!--<a href="achievements.html">► Achievements</a> -->
                 <a href="../homepage.html">► Home</a>
+                <a href="#" id="logoutLink">► Logout</a>
             </div>
         </div>
     </div>
@@ -1433,7 +1432,7 @@
                                 <div class="section-content">
                                     <div class="max-w-md">
                                         <div class="form-row">
-                                            <input type="text" id="username-input" class="input" value="GAMERPRO2024" disabled>
+                                            <input type="text" id="username-input" class="input" value="" disabled>
                                             <button id="edit-username-btn" class="btn btn-primary">► EDIT</button>
                                             <div id="username-actions" class="hidden gap-2">
                                                 <button id="save-username-btn" class="btn btn-primary">► SAVE</button>
@@ -1594,11 +1593,11 @@
 
     <!-- Toast Container -->
     <div class="toast-container" id="toast-container"></div>
-
-    <script>
+    <script type="module">
+        import {getCookie} from '../games/commonLogic/cookie.js'
         // State
         let currentTab = 'profile';
-        let username = 'GAMERPRO2024';
+        let username = '';
         let balance = 250.00;
         let isEditingUsername = false;
         
@@ -1640,6 +1639,42 @@
 
         // Initialize theme when page loads
         initializeTheme();
+
+        editUsernameBtn.addEventListener('click', () => {
+        usernameInput.disabled = false;
+        editUsernameBtn.classList.add('hidden');
+        usernameActions.classList.remove('hidden');
+        });
+
+        cancelUsernameBtn.addEventListener('click', () => {
+        usernameInput.disabled = true;
+        usernameActions.classList.add('hidden');
+        editUsernameBtn.classList.remove('hidden');
+        });
+
+        saveUsernameBtn.addEventListener('click', async () => {
+        const newUsername = usernameInput.value.trim();
+        if (!newUsername) return alert('Username cannot be empty');
+
+        try {
+            const res = await fetch('/update-username', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: getCookie('userId'), username: newUsername })
+            });
+            const data = await res.json();
+            if (data.success) {
+            usernameInput.disabled = true;
+            usernameActions.classList.add('hidden');
+            editUsernameBtn.classList.remove('hidden');
+            } else {
+            alert(data.error || 'Failed to update username');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Server error');
+        }
+        });
 
         // Global theme function for other pages to use
         window.GameHubTheme = {
@@ -1700,6 +1735,44 @@
             dropdown.classList.toggle('active');
         }
 
+        window.toggleProfile = toggleProfile;
+
+        function closeMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+        }
+        
+        window.closeMenu = closeMenu;
+        
+        // Close profile dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const profileBtn = document.querySelector('.profile-btn');
+            const dropdown = document.getElementById('profileDropdown');
+            
+            if (!profileBtn.contains(event.target)) {
+                dropdown.classList.remove('active');
+            }
+        });
+
+        document.getElementById('logoutLink').addEventListener('click', async (e) => {
+            e.preventDefault();
+
+            // Clear client storage
+            sessionStorage.clear();
+            localStorage.clear();
+
+            try {
+            // Call server logout to clear cookies
+            await fetch('/logout', { method: 'POST', credentials: 'include' });
+            } catch (err) {
+            console.error('Logout error:', err);
+            }
+
+            // Redirect to login page
+            window.location.href = '/login-signup/index.html';
+        });
         // Close profile dropdown when clicking outside
         document.addEventListener('click', function(event) {
             const profileBtn = document.querySelector('.profile-btn');
@@ -1767,33 +1840,52 @@
         });
 
         // Update Password
-        updatePasswordBtn.addEventListener('click', () => {
-            const currentPassword = currentPasswordInput.value;
-            const newPassword = newPasswordInput.value;
-            const confirmPassword = confirmPasswordInput.value;
+        updatePasswordBtn.addEventListener('click', async () => {
+        const currentPassword = currentPasswordInput.value;
+        const newPassword = newPasswordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
 
-            if (!currentPassword || !newPassword || !confirmPassword) {
-                showToast('PLEASE FILL IN ALL PASSWORD FIELDS!', 'error');
-                return;
-            }
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            showToast('PLEASE FILL IN ALL PASSWORD FIELDS!', 'error');
+            return;
+        }
 
-            if (newPassword !== confirmPassword) {
-                showToast('NEW PASSWORDS DO NOT MATCH!', 'error');
-                return;
-            }
+        if (newPassword !== confirmPassword) {
+            showToast('NEW PASSWORDS DO NOT MATCH!', 'error');
+            return;
+        }
 
-            if (newPassword.length < 8) {
-                showToast('PASSWORD MUST BE AT LEAST 8 CHARACTERS!', 'error');
-                return;
-            }
+        if (newPassword.length < 8) {
+            showToast('PASSWORD MUST BE AT LEAST 8 CHARACTERS!', 'error');
+            return;
+        }
 
-            // Clear inputs
+        try {
+            const res = await fetch('/update-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: getCookie('userId'),
+                current: currentPassword,
+                newPass: newPassword
+            })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+            showToast('PASSWORD UPDATED SUCCESSFULLY!', 'success');
             currentPasswordInput.value = '';
             newPasswordInput.value = '';
             confirmPasswordInput.value = '';
-
-            showToast('PASSWORD UPDATED SUCCESSFULLY!', 'success');
+            } else {
+            showToast(data.error || 'FAILED TO UPDATE PASSWORD!', 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('SERVER ERROR!', 'error');
+        }
         });
+
 
         // Add Funds Modal
         addFundsBtn.addEventListener('click', () => {

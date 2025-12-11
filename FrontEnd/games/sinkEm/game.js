@@ -542,11 +542,18 @@ export default {
         render();
         });
 
-        sock.on('game-over', ({ winner }) => {
+        sock.on('game-over', async ({ winner }) => {
             state.winner = winner;
+            sock.emit('add-totalgames',state.userId)
+            if(state.role == winner){
+                sock.emit('leaderboard-update', {
+                    userId: state.userId,
+                    gameType: 'sinkEm',
+                    score: null
+                })
+            }
             state.phase = 'finished';
             setStatus(`Game over. Winner: ${winner}`);
-
             // Increment winner’s score
             if (winner === 'red') state.redScore++;
             if (winner === 'blue') state.blueScore++;

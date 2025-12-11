@@ -17,10 +17,11 @@ import {
   getSizeMultiplier,
   getAlienScore
 } from './sliceWorldLogic.js';
-
+import { getSocket } from '../commonLogic/socket.js';
+import { getCookie } from '../commonLogic/cookie.js'
+const socket = getSocket();
 // Timing
 let lastTime = performance.now();
-
 // Alien Frenzy state
 let alienFrenzyActive = false;
 let alienFrenzyEndTime = 0;
@@ -813,8 +814,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================
 
   function endGame() {
-    gameOver = true;
-    
+    gameOver = true
+    const userId = getCookie('userId')|| sessionStorage.getItem('userId');
+    // DISCUSS MAKING SLICE WORLD ENDGAMES COUNT AS TOTAL GAMES
+    //socket.emit('add-totalgames', userId);
+    socket.emit('leaderboard-update',({
+      userId: userId,
+      gameType: 'sliceWorld',
+      score: score
+    }));
     setTimeout(() => {
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);

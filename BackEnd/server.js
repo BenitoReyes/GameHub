@@ -27,8 +27,8 @@ const roomOnlineUsers = new Map(); // roomId -> Set<userId>
 const disconnectTimers = new Map(); // userId -> Map<roomId, timeoutId>
 const deletingRooms = new Set(); // Set<roomId> - concurrent delete marker
 const recentRoomCreation = new Map(); // roomId -> timestamp (ms) to prevent immediate deletion on redirect
-const RECENT_ROOM_TTL_MS = 30000; // increased to 30s  to avoid accidental deletion on quick reloads
-const LEAVE_GRACE_PERIOD_MS = 30000; // grace period for leave-game cleanup (allow faster rejoin)
+const RECENT_ROOM_TTL_MS = 15000; // increased to 15s  to avoid accidental deletion on quick reloads
+const LEAVE_GRACE_PERIOD_MS = 15000; // 15s grace period for leave-game cleanup (allow faster rejoin)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -36,7 +36,7 @@ app.use(express.static(path.join(__dirname, "../FrontEnd"))); // Serve frontend 
 app.use(express.json()); // Middleware to parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // parse form bodies if needed
 
-function setAuthCookies(res, userId, token) {
+function setAuthCookies(res, userId, token, username) {
   res.setHeader('Set-Cookie', [
     cookie.serialize('userId', userId, {
       httpOnly: false,
@@ -44,6 +44,11 @@ function setAuthCookies(res, userId, token) {
       maxAge: 60 * 60 * 24,
     }),
     cookie.serialize('token', token, {
+      httpOnly: false,
+      secure: false,
+      maxAge: 60 * 60 * 24,
+    }),
+    cookie.serialize('username', username, {
       httpOnly: false,
       secure: false,
       maxAge: 60 * 60 * 24,
@@ -197,7 +202,7 @@ app.post('/signup', async (req, res) => {
     const token = serverClient.createToken(userId);
 
     console.log('User created with ID:', userId);
-    setAuthCookies(res, userId, token);
+    setAuthCookies(res, userId, toke, username );
 
     if (isAjax(req)) {
       return res.json({ success: true, redirect: '/homepage.html' });
@@ -224,7 +229,7 @@ app.post('/login', async (req, res) => {
     }
 
     const token = serverClient.createToken(user.id);
-    setAuthCookies(res, user.id, token);
+    setAuthCookies(res, user.id, token, username);
 
     if (isAjax(req)) {
       return res.json({ success: true, redirect: '/homepage.html' });
@@ -234,6 +239,53 @@ app.post('/login', async (req, res) => {
   } catch (error) {
     console.error('Error during login:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/logout', (req, res) => {
+  // Clear cookies 
+  res.clearCookie('userId'); 
+  res.clearCookie('token');  
+  res.clearCookie('username');  
+
+  if (isAjax(req)) {
+    return res.json({ success: true, redirect: '/login.html' });
+  }
+
+  res.redirect('/login.html');
+});
+
+app.post('/update-username', async (req, res) => {
+  const { userId, username } = req.body;
+  try {
+    const result = await prisma.user.update({
+      where: { id: userId },
+      data: { username }
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Update failed:', err);
+    res.status(500).json({ error: 'Could not update username' });
+  }
+});
+
+
+
+app.post('/update-password', async (req, res) => {
+  const { userId, current, newPass } = req.body;
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const valid = await bcrypt.compare(current, user.password);
+    if (!valid) return res.status(400).json({ error: 'Current password incorrect' });
+
+    const hashed = await bcrypt.hash(newPass, 10);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashed }
+    });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Could not update password' });
   }
 });
 
@@ -670,8 +722,9 @@ io.on('connection', (socket) => {
       await prisma.roomParticipant.upsert({
         where: { userId_roomId: { userId, roomId}},
         create: { roomId, userId, permission},
-        update: { permission } // optional: update role if needed 
+        update: { permission }
       });
+
       console.log(`RoomParticipant upsert for user ${userId} in room ${roomId} with permission ${permission}`);
       socket.emit('assign-role', role);
       console.log(`Emitting assign-role to user ${userId} -> ${role} for room ${roomId} (socket ${socket.id})`);
@@ -763,6 +816,95 @@ io.on('connection', (socket) => {
       } catch (e) {
         console.error('ready-for-sync handler error:', e);
       }
+    });
+
+    socket.on('leaderboard-update', async ({userId,gameType,score})=>{
+      if(gameType=='sliceWorld'){
+        const leaderboard = await prisma.leaderboard.findUnique({
+          where: {gameType_userId:{gameType: gameType, userId: userId}},
+          select: {wins: true}
+        })
+        if(leaderboard == null){
+            await prisma.leaderboard.upsert({
+            where: { gameType_userId: { gameType, userId } },
+            create: { gameType: gameType, userId: userId, wins: score},
+            update: { wins: score }
+          })
+        } else {
+          if(leaderboard.wins < score){
+          await prisma.leaderboard.upsert({
+            where: { gameType_userId: { gameType, userId } },
+            create: { gameType: gameType, userId: userId, wins: score},
+            update: { wins: score }
+          })}
+        }
+      } else{
+        await prisma.leaderboard.upsert({
+          where: { gameType_userId: { gameType, userId } },
+          create: { gameType: gameType, userId: userId, wins: 1},
+          update: { wins:{increment: 1}}
+        })
+        await prisma.user.update({
+          where: {id: userId},
+          data: {totalWins:{increment: 1}},
+          select: {totalWins:true}
+        })
+      }
+    });
+
+    socket.on('request-leaderboard', async ({ gameType, userId }) => {
+      try {
+        // 1. Get top 10 players for this game
+        const top10 = await prisma.leaderboard.findMany({
+          where: { gameType },
+          orderBy: { wins: 'desc' },
+          take: 10,
+          include: { user: true } // optional: get username
+        });
+
+        // 2. Get requesting user's leaderboard entry
+        const userEntry = await prisma.leaderboard.findUnique({
+          where: { gameType_userId: { gameType, userId } },
+          include: { user: true }
+        });
+
+        // 3. Get user's rank (count how many have more wins)
+        let userRank = null;
+        if (userEntry) {
+          const countAbove = await prisma.leaderboard.count({
+            where: {
+              gameType,
+              wins: { gt: userEntry.wins }
+            }
+          });
+          userRank = countAbove + 1;
+        }
+
+        // 4. Check if user is in top 10
+        const isInTop10 = top10.some(entry => entry.userId === userId);
+
+        // 5. Emit leaderboard data back to client
+        socket.emit('leaderboard-response', {
+              gameType,
+              top10: top10.map((entry, i) => ({
+                rank: i + 1,
+                username: entry.user.username,
+                wins: entry.wins,
+                userId: entry.userId
+              })),
+              user: userEntry
+                ? {
+                    username: userEntry.user.username,
+                    wins: userEntry.wins,
+                    rank: userRank,
+                    isInTop10
+                  }
+                : null
+            });
+        } catch (err) {
+          console.error('Leaderboard error:', err);
+          socket.emit('leaderboard-error', { message: 'Failed to load leaderboard.' });
+        }
     });
 
     socket.on('getScores', async (roomId) => {
@@ -972,6 +1114,39 @@ io.on('connection', (socket) => {
         socket.emit('action-error', { message: 'Error handling attack' });
       }
     });
+
+    socket.on('add-totalgames', async (userId) =>{
+      await prisma.user.update({
+            where: { id: userId },
+            data: { totalGames: { increment: 1 } }
+      });
+    });
+
+    socket.on('totals-request', async (userId) => {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { totalWins: true, totalGames: true }
+      });
+
+      const totalLosses = user.totalGames - user.totalWins;
+
+      socket.emit('totals-response', {
+        totalGames: user.totalGames,
+        totalWins: user.totalWins,
+        totalLosses: totalLosses
+      });
+    });
+
+    socket.on('favorite-games-request', async (userId) => {
+
+    const favorites = await prisma.leaderboard.findMany({
+      where: { userId },
+      orderBy: { wins: 'desc' },
+      take: 5
+    });
+    socket.emit('favorite-games-response', favorites);
+  });
+
 
     socket.on('reset-game', async (roomId) => {
       const room = await prisma.room.findUnique({ where: { id: roomId }, select: { gameType: true } });

@@ -57,7 +57,7 @@
 
         // Make sure we join the socket.io room right away
         socket.emit('join-room', roomId);
-
+        
         // Then run sinkEm init logic
         sinkEmModule.init({ roomId, userId, token, role, username });
         </script>
