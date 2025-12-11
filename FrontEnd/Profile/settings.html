@@ -1664,7 +1664,6 @@
             });
             const data = await res.json();
             if (data.success) {
-            alert('Username updated!');
             usernameInput.disabled = true;
             usernameActions.classList.add('hidden');
             editUsernameBtn.classList.remove('hidden');
@@ -1736,12 +1735,16 @@
             dropdown.classList.toggle('active');
         }
 
+        window.toggleProfile = toggleProfile;
+
         function closeMenu() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('overlay');
             sidebar.classList.remove('active');
             overlay.classList.remove('active');
         }
+        
+        window.closeMenu = closeMenu;
         
         // Close profile dropdown when clicking outside
         document.addEventListener('click', function(event) {

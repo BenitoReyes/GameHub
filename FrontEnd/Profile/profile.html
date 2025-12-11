@@ -328,6 +328,7 @@
             z-index: 1000;
         }
 
+
         body.light .profile-dropdown {
             background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%);
         }
@@ -1597,6 +1598,8 @@
             const dropdown = document.getElementById('profileDropdown');
             dropdown.classList.toggle('active');
         }
+        
+        window.toggleProfile = toggleProfile;
 
         function closeMenu() {
             const sidebar = document.getElementById('sidebar');
@@ -1604,7 +1607,8 @@
             sidebar.classList.remove('active');
             overlay.classList.remove('active');
         }
-        
+
+        window.closeMenu = closeMenu;
         // Close profile dropdown when clicking outside
         document.addEventListener('click', function(event) {
             const profileBtn = document.querySelector('.profile-btn');
