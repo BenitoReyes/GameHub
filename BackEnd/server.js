@@ -670,8 +670,9 @@ io.on('connection', (socket) => {
       await prisma.roomParticipant.upsert({
         where: { userId_roomId: { userId, roomId}},
         create: { roomId, userId, permission},
-        update: { permission } // optional: update role if needed 
+        update: { permission }
       });
+
       console.log(`RoomParticipant upsert for user ${userId} in room ${roomId} with permission ${permission}`);
       socket.emit('assign-role', role);
       console.log(`Emitting assign-role to user ${userId} -> ${role} for room ${roomId} (socket ${socket.id})`);
@@ -771,12 +772,20 @@ io.on('connection', (socket) => {
           where: {gameType_userId:{gameType: gameType, userId: userId}},
           select: {wins: true}
         })
-        if(leaderboard.wins < score){
-        await prisma.leaderboard.upsert({
-          where: { gameType_userId: { gameType, userId } },
-          create: { gameType: gameType, userId: userId, wins: 1},
-          update: { wins: score }
-        })}
+        if(leaderboard == null){
+            await prisma.leaderboard.upsert({
+            where: { gameType_userId: { gameType, userId } },
+            create: { gameType: gameType, userId: userId, wins: 1},
+            update: { wins: score }
+          })
+        } else {
+          if(leaderboard.wins < score){
+          await prisma.leaderboard.upsert({
+            where: { gameType_userId: { gameType, userId } },
+            create: { gameType: gameType, userId: userId, wins: 1},
+            update: { wins: score }
+          })}
+        }
       } else{
         await prisma.leaderboard.upsert({
           where: { gameType_userId: { gameType, userId } },
@@ -1047,6 +1056,13 @@ io.on('connection', (socket) => {
         console.error('attack handler error:', err);
         socket.emit('action-error', { message: 'Error handling attack' });
       }
+    });
+
+    socket.on('add-totalgames', async (userId) =>{
+      await prisma.user.update({
+            where: { id: userId },
+            data: { totalGames: { increment: 1 } }
+      });
     });
 
     socket.on('reset-game', async (roomId) => {

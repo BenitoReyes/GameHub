@@ -542,15 +542,15 @@ export default {
         render();
         });
 
-        sock.on('game-over', ({ winner }) => {
+        sock.on('game-over', async ({ winner }) => {
             state.winner = winner;
-            if(state.role==state.winner){
-                console.log("sending leaderboard update for " + state.winner)
-                socket.emit('leaderboard-update',({
+            sock.emit('add-totalgames',state.userId)
+            if(state.role == winner){
+                sock.emit('leaderboard-update', {
                     userId: state.userId,
                     gameType: 'sinkEm',
                     score: null
-                }))
+                })
             }
             state.phase = 'finished';
             setStatus(`Game over. Winner: ${winner}`);

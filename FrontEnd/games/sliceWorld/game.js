@@ -815,11 +815,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function endGame() {
     gameOver = true;
+    const userId = sessionStorage.getItem('userId');
+    // DISCUSS MAKING SLICE WORLD ENDGAMES COUNT AS TOTAL GAMES
+    //socket.emit('add-totalgames', userId);
     socket.emit('leaderboard-update',({
-      userId: sessionStorage.getItem('userId'),
+      userId: userId,
       gameType: 'sliceWorld',
       score: score
-    }))
+    }));
     setTimeout(() => {
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
