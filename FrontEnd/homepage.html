@@ -725,13 +725,15 @@
     
     <!-- Header -->
     <div class="header">
-        <div class="menu-btn" onclick="toggleMenu()">
+        <div></div>
+        <!--<div class="menu-btn" onclick="toggleMenu()">
             <div class="hamburger">
                 <span></span>
                 <span></span>
+                
                 <span></span>
             </div>
-        </div>
+        </div>-->
 
         <div class="logo">GAMEHUB</div>
 
@@ -741,12 +743,12 @@
                 <a href="Profile/profile.html">► View Profile</a>
                 <a href="Profile/settings.html">► Settings</a>
                 <!--<a href="achievements.html">► Achievements</a>-->
-                <!--<a href="logout.html">► Logout</a>-->
+                <a href="#" id="logoutLink">► Logout</a>
             </div>
         </div>
     </div>
 
-    <!-- Sidebar -->
+    <!-- Sidebar 
     <div class="sidebar" id="sidebar">
         <h2>◆ CATEGORIES</h2>
         <ul class="category-list">
@@ -760,7 +762,7 @@
             <li><a href="#rpg">► RPG</a></li>
         </ul>
     </div>
-
+    -->
     <!-- Overlay -->
     <div class="overlay" id="overlay" onclick="closeMenu()"></div>
 
@@ -798,7 +800,7 @@
             </div>
         </div>
     </div>
-
+    <script src="/Assets/theme.js"></script>
     <script>
         function toggleMenu() {
             const sidebar = document.getElementById('sidebar');
@@ -814,11 +816,6 @@
             overlay.classList.remove('active');
         }
 
-        function toggleProfile() {
-            const dropdown = document.getElementById('profileDropdown');
-            dropdown.classList.toggle('active');
-        }
-
         // Close profile dropdown when clicking outside
         document.addEventListener('click', function(event) {
             const profileBtn = document.querySelector('.profile-btn');
@@ -828,8 +825,33 @@
                 dropdown.classList.remove('active');
             }
         });
+
+        function toggleProfile() {
+            const dropdown = document.getElementById('profileDropdown');
+            dropdown.classList.toggle('active');
+        }
+
+        document.getElementById('logoutLink').addEventListener('click', async (e) => {
+            e.preventDefault();
+
+            // Clear client storage
+            sessionStorage.clear();
+            localStorage.clear();
+
+            try {
+            // Call server logout to clear cookies
+            await fetch('/logout', { method: 'POST', credentials: 'include' });
+            } catch (err) {
+            console.error('Logout error:', err);
+            }
+
+            // Redirect to login page
+            window.location.href = '/login-signup/index.html';
+        });
+
+        
     </script>
-    <script src="/FrontEnd/Assets/theme.js"></script>
+    
     <script>
         // Ensure theme is applied after everything loads
         document.addEventListener('DOMContentLoaded', function() {

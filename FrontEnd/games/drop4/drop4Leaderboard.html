@@ -29,8 +29,9 @@
         <script src="/socket.io/socket.io.js"></script>
         <script type="module">
             import { getSocket } from '../commonLogic/socket.js';
+            import { getCookie } from '../commonLogic/cookie.js'
             const socket = getSocket();
-            const userId = sessionStorage.getItem('userId');
+            const userId = getCookie('userId')|| sessionStorage.getItem('userId');
 
             socket.emit('request-leaderboard', { gameType: 'drop4', userId });
 

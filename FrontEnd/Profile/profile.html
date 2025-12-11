@@ -976,7 +976,7 @@
         }
 
         .circle-percentage {
-            font-size: 2.25rem;
+            font-size: 1.70rem;
             font-weight: 600;
         }
 
@@ -1383,10 +1383,9 @@
         <div class="profile-btn" onclick="toggleProfile()">
             👤 PROFILE
             <div class="profile-dropdown" id="profileDropdown">
-                <a href="profile.html">► View Profile</a>
                 <a href="settings.html">► Settings</a>
                 <a href="../homepage.html">► Home</a>
-                <!-- <a href="login.html">► Logout</a> -->
+                <a href="#" id="logoutLink">► Logout</a>
             </div>
         </div>
     </div>
@@ -1412,28 +1411,33 @@
                 </div>
                 
                 <div class="profile-info">
-                    <h1 class="profile-username">GamerPro2024</h1>
+                    <h1 class="profile-username"></h1>
                     <div class="profile-badges">
+                        <!--
                         <span class="badge">
                             <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
                             </svg>
-                            Win Rate: <span id="badge-winrate">62.8</span>%
+                            Win Rate: <span id="badge-winrate"></span>%
                         </span>
+                        
                         <span class="badge">
                             <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"></path>
                             </svg>
                             <span id="badge-totalgames">156</span> Games Played
                         </span>
+                        -->
                     </div>
+                    <!--
                     <div class="profile-streak">
                         <div>Current Win Streak: <span class="highlight" id="current-streak">5</span> games</div>
                         <div>Best Streak: <span class="highlight" id="best-streak">12</span> games</div>
                     </div>
+                    -->
                 </div>
 
-                <!-- Balance Card -->
+                <!-- Balance Card 
                 <div class="balance-card">
                     <div class="balance-content">
                         <div class="balance-icon">
@@ -1447,9 +1451,9 @@
                         </div>
                     </div>
                 </div>
+                -->
             </div>
         </div>
-
         <!-- Stats Grid -->
         <div class="stats-grid">
             <!-- Total Games -->
@@ -1460,7 +1464,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"></path>
                     </svg>
                 </div>
-                <p class="stat-value" id="total-games">156</p>
+                <p class="stat-value" id="total-games"></p>
                 <p class="stat-description">Across all platforms</p>
             </div>
 
@@ -1472,7 +1476,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
                     </svg>
                 </div>
-                <p class="stat-value green" id="total-wins">98</p>
+                <p class="stat-value green" id="total-wins"></p>
                 <p class="stat-description">Victory achieved</p>
             </div>
 
@@ -1484,14 +1488,14 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
                     </svg>
                 </div>
-                <p class="stat-value red" id="total-losses">58</p>
+                <p class="stat-value red" id="total-losses"></p>
                 <p class="stat-description">Learning experiences</p>
             </div>
         </div>
 
-        <!-- Content Grid -->
+        <!-- Content Grid 
         <div class="content-grid">
-            <!-- Recent Game History -->
+                Recent Game History 
             <div class="card under-construction">
                 <div class="construction-overlay">
                     <div class="construction-content">
@@ -1506,18 +1510,12 @@
                     Recent Games
                 </h2>
                 <div class="games-list" id="recent-games">
-                    <!-- Games will be inserted here -->
+                    Games will be inserted here 
                 </div>
             </div>
-
+            -->
             <!-- Performance Overview -->
-            <div class="card under-construction">
-                <div class="construction-overlay">
-                    <div class="construction-content">
-                        <h3 class="construction-title">🚧 Under Construction 🚧</h3>
-                        <p class="construction-text">This feature is coming soon!</p>
-                    </div>
-                </div>
+            <div class="card">
                 <h2 class="section-title">
                     <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
@@ -1566,6 +1564,7 @@
                         <p class="performance-item-label">Losses</p>
                         <p class="performance-item-value red" id="perf-losses">58</p>
                     </div>
+                    <!--
                     <div class="performance-item">
                         <p class="performance-item-label">Current Streak</p>
                         <p class="performance-item-value" id="perf-current-streak">5</p>
@@ -1574,145 +1573,39 @@
                         <p class="performance-item-label">Best Streak</p>
                         <p class="performance-item-value" id="perf-best-streak">12</p>
                     </div>
+                    -->
                 </div>
+            </div>
+            <!-- Favorite Games -->
+            <div class="card">
+                <h2 class="section-title">
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: #eab308;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
+                    </svg>
+                    Favorite Games
+                </h2>
+                <div class="games-grid" id="favorite-games"></div>
             </div>
         </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module">
+        import {getCookie} from '../games/commonLogic/cookie.js'
+        const socket = io();
 
-        <!-- Favorite Games -->
-        <div class="card mt-6 under-construction">
-            <div class="construction-overlay">
-                <div class="construction-content">
-                    <h3 class="construction-title">🚧 Under Construction 🚧</h3>
-                    <p class="construction-text">This feature is coming soon!</p>
-                </div>
-            </div>
-            <h2 class="section-title">
-                <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: #eab308;">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
-                </svg>
-                Favorite Games
-            </h2>
-            <div class="games-grid" id="favorite-games">
-                <!-- Games will be inserted here -->
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // Mock user data
-        const userData = {
-            username: 'GamerPro2024',
-            avatarUrl: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=400&h=400&fit=crop',
-            balance: 1250.00,
-            stats: {
-                totalGames: 156,
-                wins: 98,
-                losses: 58,
-                winRate: 62.8,
-                currentStreak: 5,
-                bestStreak: 12,
-            },
-            recentGames: [
-                { id: 1, name: '4 Drop 4', result: 'win', score: '4-2', date: '2 hours ago' },
-                { id: 2, name: '🎮 Space Runner', result: 'loss', score: '2nd Place', date: '5 hours ago' },
-                { id: 3, name: '🏎️ Turbo Race', result: 'win', score: '1st Place', date: '1 day ago' },
-                { id: 4, name: '🧩 Block Puzzle', result: 'win', score: 'Level 45', date: '1 day ago' },
-                { id: 5, name: '⚔️ Pixel Quest', result: 'loss', score: 'Defeat', date: '2 days ago' },
-            ],
-            favoriteGames: [
-                { id: 1, name: '4 Drop 4', hoursPlayed: 156, rank: 'Champion', imageUrl: 'https://images.unsplash.com/photo-1606092195730-5d7b9af1efc5?w=400&h=300&fit=crop' },
-                { id: 2, name: '🎮 Space Runner', hoursPlayed: 89, rank: 'Expert', imageUrl: 'https://images.unsplash.com/photo-1614294148960-9aa740632a87?w=400&h=300&fit=crop' },
-                { id: 3, name: '👾 Invaders', hoursPlayed: 67, rank: 'Master', imageUrl: 'https://images.unsplash.com/photo-1556438064-2d7646166914?w=400&h=300&fit=crop' },
-                { id: 4, name: '🍄 Jump Bros', hoursPlayed: 45, rank: 'Pro', imageUrl: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=400&h=300&fit=crop' },
-                { id: 5, name: '🚀 Asteroid', hoursPlayed: 34, rank: 'Ace', imageUrl: 'https://images.unsplash.com/photo-1614294148960-9aa740632a87?w=400&h=300&fit=crop' },
-            ],
-        };
-
-        // Render Recent Games
-        function renderRecentGames() {
-            const container = document.getElementById('recent-games');
-            container.innerHTML = userData.recentGames.map(game => `
-                <div class="game-item">
-                    <div class="game-content">
-                        <div class="game-left">
-                            <div class="game-indicator ${game.result}"></div>
-                            <div>
-                                <p class="game-name">${game.name}</p>
-                                <p class="game-score">${game.score}</p>
-                            </div>
-                        </div>
-                        <div class="game-right">
-                            <span class="badge ${game.result === 'win' ? 'success' : ''}">
-                                ${game.result === 'win' ? 'Victory' : 'Defeat'}
-                            </span>
-                            <p class="game-date">${game.date}</p>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // Render Favorite Games
-        function renderFavoriteGames() {
-            const container = document.getElementById('favorite-games');
-            container.innerHTML = userData.favoriteGames.map(game => `
-                <div class="game-card">
-                    <div class="game-image">
-                        <img src="${game.imageUrl}" alt="${game.name}">
-                    </div>
-                    <div class="game-info">
-                        <h3 class="game-title">${game.name}</h3>
-                        <p class="game-hours">${game.hoursPlayed} hours played</p>
-                        <span class="badge outline">${game.rank}</span>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // Update all stats
-        function updateStats() {
-            // Update header stats
-            document.getElementById('badge-winrate').textContent = userData.stats.winRate;
-            document.getElementById('badge-totalgames').textContent = userData.stats.totalGames;
-            document.getElementById('current-streak').textContent = userData.stats.currentStreak;
-            document.getElementById('best-streak').textContent = userData.stats.bestStreak;
-            document.getElementById('balance').textContent = `$${userData.balance.toFixed(2)}`;
-
-            // Update stat cards
-            document.getElementById('total-games').textContent = userData.stats.totalGames;
-            document.getElementById('total-wins').textContent = userData.stats.wins;
-            document.getElementById('total-losses').textContent = userData.stats.losses;
-            
-            // Update progress bars
-            document.getElementById('wins-progress').style.width = `${userData.stats.winRate}%`;
-            document.getElementById('losses-progress').style.width = `${100 - userData.stats.winRate}%`;
-
-            // Update performance overview
-            document.getElementById('win-percentage').textContent = `${userData.stats.winRate}%`;
-            document.getElementById('perf-wins').textContent = userData.stats.wins;
-            document.getElementById('perf-losses').textContent = userData.stats.losses;
-            document.getElementById('perf-current-streak').textContent = userData.stats.currentStreak;
-            document.getElementById('perf-best-streak').textContent = userData.stats.bestStreak;
-
-            // Update circle chart
-            const circumference = 2 * Math.PI * 80; // 502.4
-            const winPercentage = userData.stats.winRate / 100;
-            const dashArray = `${circumference * winPercentage} ${circumference}`;
-            document.getElementById('win-circle').setAttribute('stroke-dasharray', dashArray);
-        }
-
-        // Initialize
-        renderRecentGames();
-        renderFavoriteGames();
-        updateStats();
-
-        // Profile Toggle Function
         function toggleProfile() {
             const dropdown = document.getElementById('profileDropdown');
             dropdown.classList.toggle('active');
         }
 
-        // Close dropdown when clicking outside
+        function closeMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+        }
+        
+        // Close profile dropdown when clicking outside
         document.addEventListener('click', function(event) {
             const profileBtn = document.querySelector('.profile-btn');
             const dropdown = document.getElementById('profileDropdown');
@@ -1721,9 +1614,76 @@
                 dropdown.classList.remove('active');
             }
         });
-    </script>
+        
+        document.getElementById('logoutLink').addEventListener('click', async (e) => {
+            e.preventDefault();
 
+            // Clear client storage
+            sessionStorage.clear();
+            localStorage.clear();
+
+            try {
+            // Call server logout to clear cookies
+            await fetch('/logout', { method: 'POST', credentials: 'include' });
+            } catch (err) {
+            console.error('Logout error:', err);
+            }
+
+            // Redirect to login page
+            window.location.href = '/login-signup/index.html';
+        });
+
+        const userId = getCookie('userId');
+        const username = getCookie('username') || "Guest";
+
+        const usernameEl = document.querySelector('.profile-username');
+        if (usernameEl) usernameEl.textContent = username;
+
+        socket.on('connect', () => {
+            socket.emit('totals-request', userId);
+            socket.emit('favorite-games-request', userId);
+        });
+        
+        socket.on('totals-response', ({ totalGames, totalWins, totalLosses }) => {
+            const winRate = totalGames > 0 ? ((totalWins / totalGames) * 100).toFixed(1) : 0;
+
+            const safeSet = (id, value) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = value;
+            };
+
+            safeSet('total-games', totalGames);
+            safeSet('total-wins', totalWins);
+            safeSet('total-losses', totalLosses);
+            safeSet('badge-winrate', winRate);
+            safeSet('perf-wins', totalWins);
+            safeSet('perf-losses', totalLosses);
+            safeSet('win-percentage', `${winRate}%`);
+
+            const circle = document.getElementById('win-circle');
+            if (circle) {
+                const circumference = 2 * Math.PI * 80;
+                const dashArray = `${circumference * (winRate / 100)} ${circumference}`;
+                circle.setAttribute('stroke-dasharray', dashArray);
+            }
+        });
+
+        socket.on('favorite-games-response', (games) => {
+            const container = document.getElementById('favorite-games');
+            if (container) {
+                container.innerHTML = games.map(game => `
+                <div class="game-card">
+                    <div class="game-info">
+                    <h3 class="game-title">${game.gameType}</h3>
+                    <p class="game-hours">${game.wins} wins</p>
+                    <span class="badge outline">Favorite</span>
+                    </div>
+                </div>
+                `).join('');
+            }
+        });
+    </script>
     <!-- Theme Toggle Script -->
-    <script src="theme.js"></script>
+    <script src="../Assets/theme.js"></script>
 </body>
 </html>

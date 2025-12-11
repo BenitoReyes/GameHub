@@ -11,6 +11,7 @@ CREATE TABLE "public"."User" (
     "username" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "totalGames" INTEGER NOT NULL DEFAULT 0,
+    "totalWins" INTEGER NOT NULL DEFAULT 0,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );

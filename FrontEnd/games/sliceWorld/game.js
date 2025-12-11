@@ -18,10 +18,10 @@ import {
   getAlienScore
 } from './sliceWorldLogic.js';
 import { getSocket } from '../commonLogic/socket.js';
+import { getCookie } from '../commonLogic/cookie.js'
 const socket = getSocket();
 // Timing
 let lastTime = performance.now();
-
 // Alien Frenzy state
 let alienFrenzyActive = false;
 let alienFrenzyEndTime = 0;
@@ -814,8 +814,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================
 
   function endGame() {
-    gameOver = true;
-    const userId = sessionStorage.getItem('userId');
+    gameOver = true
+    const userId = getCookie('userId')|| sessionStorage.getItem('userId');
     // DISCUSS MAKING SLICE WORLD ENDGAMES COUNT AS TOTAL GAMES
     //socket.emit('add-totalgames', userId);
     socket.emit('leaderboard-update',({

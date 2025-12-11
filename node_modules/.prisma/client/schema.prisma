@@ -14,6 +14,7 @@ model User {
   username         String            @unique
   createdAt        DateTime          @default(now())
   totalGames       Int               @default(0)
+  totalWins        Int               @default(0)
   leaderboards     Leaderboard[]
   rooms            Room[]            @relation("RoomHost")
   roomParticipants RoomParticipant[]
