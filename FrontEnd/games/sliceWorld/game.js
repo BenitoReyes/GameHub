@@ -17,7 +17,8 @@ import {
   getSizeMultiplier,
   getAlienScore
 } from './sliceWorldLogic.js';
-
+import { getSocket } from '../commonLogic/socket.js';
+const socket = getSocket();
 // Timing
 let lastTime = performance.now();
 
@@ -814,7 +815,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function endGame() {
     gameOver = true;
-    
+    socket.emit('leaderboard-update',({
+      userId: sessionStorage.getItem('userId'),
+      gameType: 'sliceWorld',
+      score: score
+    }))
     setTimeout(() => {
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);

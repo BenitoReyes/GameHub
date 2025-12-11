@@ -544,9 +544,16 @@ export default {
 
         sock.on('game-over', ({ winner }) => {
             state.winner = winner;
+            if(state.role==state.winner){
+                console.log("sending leaderboard update for " + state.winner)
+                socket.emit('leaderboard-update',({
+                    userId: state.userId,
+                    gameType: 'sinkEm',
+                    score: null
+                }))
+            }
             state.phase = 'finished';
             setStatus(`Game over. Winner: ${winner}`);
-
             // Increment winner’s score
             if (winner === 'red') state.redScore++;
             if (winner === 'blue') state.blueScore++;

@@ -288,9 +288,8 @@ function initializeBoard() {
         // Request server to get latest scores and result
         try { socket.emit('getScores', state.scriptRoomId); } catch (e) { /* ignore */ }
         socket.emit('leaderboard-update',({
-          roomId: state.scriptRoomId,
           userId: state.userId,
-          gameType: state.gameType,
+          gameType: 'drop4',
           score: null
         }))
       } else if (isDraw()) {

@@ -27,8 +27,8 @@ const roomOnlineUsers = new Map(); // roomId -> Set<userId>
 const disconnectTimers = new Map(); // userId -> Map<roomId, timeoutId>
 const deletingRooms = new Set(); // Set<roomId> - concurrent delete marker
 const recentRoomCreation = new Map(); // roomId -> timestamp (ms) to prevent immediate deletion on redirect
-const RECENT_ROOM_TTL_MS = 30000; // increased to 30s  to avoid accidental deletion on quick reloads
-const LEAVE_GRACE_PERIOD_MS = 30000; // grace period for leave-game cleanup (allow faster rejoin)
+const RECENT_ROOM_TTL_MS = 15000; // increased to 15s  to avoid accidental deletion on quick reloads
+const LEAVE_GRACE_PERIOD_MS = 15000; // 15s grace period for leave-game cleanup (allow faster rejoin)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -765,21 +765,82 @@ io.on('connection', (socket) => {
       }
     });
 
-    socket.on('leaderboard-update', async ({roomId,userId,gameType,score})=>{
-      if(gameType=='sinkEm'){
-        prisma.leaderboard.upsert({
-          where: { gameType_userId: { gameType, userId } },
-          create: { gameType: gameType, userId: userId, wins: 0 },
-          update: { wins: score }
+    socket.on('leaderboard-update', async ({userId,gameType,score})=>{
+      if(gameType=='sliceWorld'){
+        const leaderboard = await prisma.leaderboard.findUnique({
+          where: {gameType_userId:{gameType: gameType, userId: userId}},
+          select: {wins: true}
         })
-      } else{
-        prisma.leaderboard.upsert({
+        if(leaderboard.wins < score){
+        await prisma.leaderboard.upsert({
           where: { gameType_userId: { gameType, userId } },
-          create: { gameType: gameType, userId: userId, wins: 0 },
+          create: { gameType: gameType, userId: userId, wins: 1},
+          update: { wins: score }
+        })}
+      } else{
+        await prisma.leaderboard.upsert({
+          where: { gameType_userId: { gameType, userId } },
+          create: { gameType: gameType, userId: userId, wins: 1},
           update: { wins:{increment: 1}}
         })
       }
     });
+
+    socket.on('request-leaderboard', async ({ gameType, userId }) => {
+      try {
+        // 1. Get top 10 players for this game
+        const top10 = await prisma.leaderboard.findMany({
+          where: { gameType },
+          orderBy: { wins: 'desc' },
+          take: 10,
+          include: { user: true } // optional: get username
+        });
+
+        // 2. Get requesting user's leaderboard entry
+        const userEntry = await prisma.leaderboard.findUnique({
+          where: { gameType_userId: { gameType, userId } },
+          include: { user: true }
+        });
+
+        // 3. Get user's rank (count how many have more wins)
+        let userRank = null;
+        if (userEntry) {
+          const countAbove = await prisma.leaderboard.count({
+            where: {
+              gameType,
+              wins: { gt: userEntry.wins }
+            }
+          });
+          userRank = countAbove + 1;
+        }
+
+        // 4. Check if user is in top 10
+        const isInTop10 = top10.some(entry => entry.userId === userId);
+
+        // 5. Emit leaderboard data back to client
+        socket.emit('leaderboard-response', {
+              gameType,
+              top10: top10.map((entry, i) => ({
+                rank: i + 1,
+                username: entry.user.username,
+                wins: entry.wins,
+                userId: entry.userId
+              })),
+              user: userEntry
+                ? {
+                    username: userEntry.user.username,
+                    wins: userEntry.wins,
+                    rank: userRank,
+                    isInTop10
+                  }
+                : null
+            });
+        } catch (err) {
+          console.error('Leaderboard error:', err);
+          socket.emit('leaderboard-error', { message: 'Failed to load leaderboard.' });
+        }
+    });
+
     socket.on('getScores', async (roomId) => {
       const room = await prisma.room.findUnique({
         where: { id: roomId },

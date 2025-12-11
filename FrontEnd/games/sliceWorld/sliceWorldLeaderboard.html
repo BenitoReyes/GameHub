@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Drop4 Leaderboard</title>
+        <link rel="stylesheet" href="../../Assets/styles.css" />
+    </head>
+    <body class="leaderboard-page">
+        <a href="sliceWorldMenu.html" class="back-btn">◄ BACK</a>
+
+        <!-- Floating chips for style consistency -->
+        <div class="floating-chip chip-1">🌍</div>
+        <div class="floating-chip chip-2">🪐</div>
+        <div class="floating-chip chip-3">🌏</div>
+        <div class="floating-chip chip-4">👾</div>
+
+        <!-- Leaderboard container -->
+        <div class="leaderboard-container">
+            <div class="icon-container">
+            <h1>Slice World Leaderboard</h1>
+            </div>
+            <div id="leaderboardList" class="leaderboard-list">
+            <!-- Leaderboard entries will be populated here -->
+            </div>
+        </div>
+
+        <!-- Socket.io -->
+        <script src="/socket.io/socket.io.js"></script>
+        <script type="module">
+            import { getSocket } from '../commonLogic/socket.js';
+            const socket = getSocket();
+            const userId = sessionStorage.getItem('userId');
+
+            socket.emit('request-leaderboard', { gameType: 'sliceWorld', userId});
+
+            socket.on('leaderboard-response', ({ top10, user }) => {
+            const list = document.getElementById('leaderboardList');
+
+            list.innerHTML = top10.map((entry, index) => {
+                const rankClass =
+                index === 0 ? 'gold' :
+                index === 1 ? 'silver' :
+                index === 2 ? 'bronze' : '';
+
+                const highlightClass = entry.userId === user?.userId ? 'highlight' : '';
+                const combinedClass = `leaderboard-entry ${rankClass} ${highlightClass}`.trim();
+
+                return `
+                <div class="${combinedClass}">
+                    <span>${entry.rank}. ${entry.username}</span>
+                    <span>Wins: ${entry.wins}</span>
+                </div>
+                `;
+            }).join('');
+
+            if (user && !user.isInTop10) {
+                list.innerHTML += `
+                <div class="leaderboard-entry highlight" style="margin-top: 20px; border-top: 1px solid #555;">
+                    <span>${user.rank}. ${user.username}</span>
+                    <span>Wins: ${user.wins}</span>
+                </div>
+                `;
+            }
+            });
+        </script>
+    </body>
+</html>
