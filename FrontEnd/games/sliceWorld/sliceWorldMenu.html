@@ -616,10 +616,31 @@
             <div class="high-score-label">★ HIGH SCORE ★</div>
             <div class="high-score-value" id="high-score-value">0</div>
         </div>
+        <br>
+        <a href="sliceWorldLeaderboard.html" class="menu-btn info">
+                    <span class="icon">🏆</span>
+                    <span>LEADER<br>BOARDS</span>
+        </a>
     </div>
+    
 
     <script src="../../Assets/theme.js"></script>
-    <script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module">
+        import { getSocket } from '../commonLogic/socket.js';
+        import { getCookie } from '../commonLogic/cookie.js'
+        const socket = getSocket();
+        const userId = getCookie('userId')|| sessionStorage.getItem('userId');
+        socket.on('leaderboard-response', ({ top10, user }) => {
+            if (user) {
+                document.getElementById("high-score-value").textContent = user.wins;
+            }
+            if (user.isInTop10) {
+                document.getElementById("high-score-value").classList.add("highlight");
+            }
+        });
+
+        socket.emit('request-leaderboard', { gameType: 'sliceWorld', userId});
         // Load high score from localStorage
         const highScore = localStorage.getItem('sliceWorld_highScore') || 0;
         document.getElementById('high-score-value').textContent = highScore;
