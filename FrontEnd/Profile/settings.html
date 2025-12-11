@@ -1837,33 +1837,52 @@
         });
 
         // Update Password
-        updatePasswordBtn.addEventListener('click', () => {
-            const currentPassword = currentPasswordInput.value;
-            const newPassword = newPasswordInput.value;
-            const confirmPassword = confirmPasswordInput.value;
+        updatePasswordBtn.addEventListener('click', async () => {
+        const currentPassword = currentPasswordInput.value;
+        const newPassword = newPasswordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
 
-            if (!currentPassword || !newPassword || !confirmPassword) {
-                showToast('PLEASE FILL IN ALL PASSWORD FIELDS!', 'error');
-                return;
-            }
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            showToast('PLEASE FILL IN ALL PASSWORD FIELDS!', 'error');
+            return;
+        }
 
-            if (newPassword !== confirmPassword) {
-                showToast('NEW PASSWORDS DO NOT MATCH!', 'error');
-                return;
-            }
+        if (newPassword !== confirmPassword) {
+            showToast('NEW PASSWORDS DO NOT MATCH!', 'error');
+            return;
+        }
 
-            if (newPassword.length < 8) {
-                showToast('PASSWORD MUST BE AT LEAST 8 CHARACTERS!', 'error');
-                return;
-            }
+        if (newPassword.length < 8) {
+            showToast('PASSWORD MUST BE AT LEAST 8 CHARACTERS!', 'error');
+            return;
+        }
 
-            // Clear inputs
+        try {
+            const res = await fetch('/update-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: getCookie('userId'),
+                current: currentPassword,
+                newPass: newPassword
+            })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+            showToast('PASSWORD UPDATED SUCCESSFULLY!', 'success');
             currentPasswordInput.value = '';
             newPasswordInput.value = '';
             confirmPasswordInput.value = '';
-
-            showToast('PASSWORD UPDATED SUCCESSFULLY!', 'success');
+            } else {
+            showToast(data.error || 'FAILED TO UPDATE PASSWORD!', 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('SERVER ERROR!', 'error');
+        }
         });
+
 
         // Add Funds Modal
         addFundsBtn.addEventListener('click', () => {
