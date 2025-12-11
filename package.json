@@ -30,6 +30,7 @@
     "neon": "^2.0.0",
     "nodemon": "^2.0.22",
     "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
     "stream-chat": "^9.19.1",
     "uuid": "^13.0.0",
     "vite": "^7.1.6"

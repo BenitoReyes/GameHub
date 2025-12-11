@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>sinkEm</title>
+        <link rel="stylesheet" href="../../Assets/styles.css" />
+    </head>
+    <body class="sinkEm-page">
+        <a href="sinkEmMenu.html" class="back-btn">◄ BACK</a>
+
+        <!-- Player Profiles -->
+        <div class="profile-container profile-left profile-red">
+        <div class="profile-avatar">🚢</div>
+        <span class="profile-username" id="redPlayerName">Player 1</span>
+        </div>
+        <div class="profile-container profile-right profile-blue">
+        <div class="profile-avatar">🚢</div>
+        <span class="profile-username" id="bluePlayerName">Player 2</span>
+        </div>
+
+        <!-- Board container that render() controls -->
+        <div id="board">Loading...</div>
+
+        <!-- Scoreboard -->
+        <div id="scoreboard">
+        <h3>Scores</h3>
+        <p>Red: <span id="redScore">0</span></p>
+        <p>Blue: <span id="blueScore">0</span></p>
+        </div>
+
+        <!-- Chat -->
+        <div class="chat-container">
+        <h2>★ LIVE CHAT ★</h2>
+        <div id="chatMessages" class="chat-box"></div>
+        <div class="chat-input-row">
+            <input id="chatInput" type="text" placeholder="Type message..." />
+            <button id="sendBtn" class="pixel-btn">SEND</button>
+        </div>
+        </div>
+
+        <!-- Scripts -->
+        <script src="../../streamChat/stream-chat.bundle.js"></script>
+        <script src="/socket.io/socket.io.js"></script>
+        <script type="module">
+        import sinkEmModule from '/games/sinkEm/game.js';
+        import { getSocket } from '../commonLogic/socket.js';
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomId = urlParams.get('roomId') || sessionStorage.getItem('roomId');
+        const userId = sessionStorage.getItem('userId');
+        const token = sessionStorage.getItem('token');
+        const role = sessionStorage.getItem('role');
+        const username = sessionStorage.getItem('username');
+
+        const socket = getSocket();
+
+        // Make sure we join the socket.io room right away
+        socket.emit('join-room', roomId);
+
+        // Then run sinkEm init logic
+        sinkEmModule.init({ roomId, userId, token, role, username });
+        </script>
+    </body>
+</html>

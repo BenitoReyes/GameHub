@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1a1a2e">
+  <title>Slice World - Game</title>
+  <link rel="stylesheet" href="sliceWorld.css">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <script type="module" src="game.js"></script>
+</head>
+<body>
+  
+  <!-- Score - Top Left -->
+  <div id="score-container">
+    <div class="score-value" id="score-value">0</div>
+  </div>
+  
+  <!-- Profile Avatar - Top Right -->
+  <div id="player-profile">
+    <img src="assets/Portrait_Placeholder.png" alt="Player" id="profile-img" />
+  </div>
+  
+  <div id="game-container">
+    <!-- Back Button -->
+    <a href="sliceWorldMenu.html" class="back-btn" id="back-btn">◄ BACK</a>
+
+    <!-- Hit flash overlay for slice feedback -->
+    <div id="hit-flash"></div>
+
+    <!-- Frenzy top banner -->
+    <div id="frenzy-banner" class="frenzy-banner">
+      ALIEN FRENZY!
+    </div>
+
+    <!-- Game canvas -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Shield Status Indicator (Top Center) -->
+    <div id="shield-indicator"></div>
+
+    <!-- Shield ability button -->
+    <div id="frenzy-container">
+      <button id="frenzy-button" class="frenzy-btn">
+        SHIELD
+      </button>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GameHub - Signup</title>
+    <script src="theme.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background: linear-gradient(180deg, #1a1a2e 0%, #0f3460 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            position: relative;
+            overflow: hidden;
+            padding: 40px 20px;
+            color: #ffffff;
+        }
+
+        /* Light Mode */
+        body.light {
+            background: linear-gradient(180deg, #d6eaff 0%, #b3d9ff 100%);
+            color: #2d3748;
+        }
+
+        /* Hide dark mode elements in light mode */
+        body.light::after,
+        body.light .shooting-star {
+            display: none;
+        }
+
+        /* Sun for Light Mode */
+        body.light::after {
+            content: '';
+            position: absolute;
+            top: 15%;
+            right: 10%;
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle at 30% 30%, #fef08a 0%, #fbbf24 50%, #f59e0b 100%);
+            border-radius: 50%;
+            opacity: 0.9;
+            z-index: -1;
+            display: block;
+            animation: sunGlow 5s ease-in-out infinite;
+            box-shadow: 
+                0 0 30px rgba(251, 191, 36, 0.6),
+                0 0 60px rgba(251, 191, 36, 0.4),
+                0 0 90px rgba(251, 191, 36, 0.2);
+        }
+
+        /* Animated stars background */
+        body::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background-image: 
+                radial-gradient(2px 2px at 20% 30%, white, transparent),
+                radial-gradient(2px 2px at 60% 70%, white, transparent),
+                radial-gradient(1px 1px at 50% 50%, white, transparent),
+                radial-gradient(1px 1px at 80% 10%, white, transparent),
+                radial-gradient(2px 2px at 90% 60%, white, transparent),
+                radial-gradient(1px 1px at 33% 80%, white, transparent),
+                radial-gradient(1px 1px at 15% 60%, white, transparent),
+                radial-gradient(2px 2px at 75% 25%, white, transparent),
+                radial-gradient(1px 1px at 40% 90%, white, transparent),
+                radial-gradient(1px 1px at 95% 40%, white, transparent);
+            background-size: 200px 200px, 180px 180px, 220px 220px;
+            animation: stars 25s linear infinite, twinkle 4s ease-in-out infinite;
+            opacity: 0.4;
+            z-index: -2;
+        }
+
+        /* Moon */
+        body::after {
+            content: '';
+            position: absolute;
+            top: 15%;
+            right: 10%;
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle at 30% 30%, #f7fafc 0%, #e2e8f0 40%, #cbd5e0 100%);
+            border-radius: 50%;
+            opacity: 0.9;
+            z-index: -1;
+            animation: moonGlow 6s ease-in-out infinite;
+            box-shadow: 
+                0 0 20px rgba(255, 255, 255, 0.3),
+                0 0 40px rgba(255, 255, 255, 0.2),
+                0 0 60px rgba(255, 255, 255, 0.1),
+                inset -8px -8px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        /* Light Mode Clouds */
+        body.light::before {
+            content: '';
+            position: absolute;
+            width: 300%;
+            height: 100%;
+            background-image: 
+                /* Large clouds */
+                radial-gradient(ellipse 120px 40px at 25% 20%, rgba(255, 255, 255, 0.8), transparent 50%),
+                radial-gradient(ellipse 80px 30px at 75% 35%, rgba(255, 255, 255, 0.6), transparent 50%),
+                radial-gradient(ellipse 100px 35px at 50% 60%, rgba(255, 255, 255, 0.7), transparent 50%),
+                radial-gradient(ellipse 90px 25px at 15% 80%, rgba(255, 255, 255, 0.5), transparent 50%),
+                /* Medium clouds */
+                radial-gradient(ellipse 60px 20px at 85% 15%, rgba(240, 248, 255, 0.6), transparent 50%),
+                radial-gradient(ellipse 70px 25px at 35% 45%, rgba(240, 248, 255, 0.5), transparent 50%),
+                radial-gradient(ellipse 55px 18px at 65% 75%, rgba(240, 248, 255, 0.7), transparent 50%),
+                /* Small clouds */
+                radial-gradient(ellipse 40px 15px at 45% 25%, rgba(248, 250, 252, 0.4), transparent 50%),
+                radial-gradient(ellipse 35px 12px at 80% 55%, rgba(248, 250, 252, 0.5), transparent 50%),
+                radial-gradient(ellipse 45px 16px at 20% 65%, rgba(248, 250, 252, 0.6), transparent 50%);
+            background-size: 400px 300px, 350px 250px, 300px 200px;
+            animation: clouds 30s linear infinite;
+            opacity: 0.8;
+            z-index: -2;
+        }
+
+        @keyframes stars {
+            from { transform: translateY(0) translateX(0); }
+            to { transform: translateY(-200px) translateX(-100px); }
+        }
+
+        @keyframes twinkle {
+            0% { opacity: 0.4; }
+            33% { opacity: 0.7; }
+            66% { opacity: 0.4; }
+            100% { opacity: 0.4; }
+        }
+
+        @keyframes clouds {
+            from { transform: translateX(0); }
+            to { transform: translateX(-33.33%); }
+        }
+
+        @keyframes moonGlow {
+            0% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.3), 0 0 40px rgba(255, 255, 255, 0.2), 0 0 60px rgba(255, 255, 255, 0.1), inset -8px -8px 0 rgba(0, 0, 0, 0.1); }
+            50% { box-shadow: 0 0 30px rgba(255, 255, 255, 0.5), 0 0 60px rgba(255, 255, 255, 0.3), 0 0 90px rgba(255, 255, 255, 0.2), inset -8px -8px 0 rgba(0, 0, 0, 0.1); }
+            100% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.3), 0 0 40px rgba(255, 255, 255, 0.2), 0 0 60px rgba(255, 255, 255, 0.1), inset -8px -8px 0 rgba(0, 0, 0, 0.1); }
+        }
+
+        @keyframes sunGlow {
+            0% { box-shadow: 0 0 30px rgba(251, 191, 36, 0.6), 0 0 60px rgba(251, 191, 36, 0.4), 0 0 90px rgba(251, 191, 36, 0.2); }
+            50% { box-shadow: 0 0 45px rgba(251, 191, 36, 0.8), 0 0 90px rgba(251, 191, 36, 0.6), 0 0 135px rgba(251, 191, 36, 0.3); }
+            100% { box-shadow: 0 0 30px rgba(251, 191, 36, 0.6), 0 0 60px rgba(251, 191, 36, 0.4), 0 0 90px rgba(251, 191, 36, 0.2); }
+        }
+
+        /* Shooting Stars */
+        .shooting-star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: linear-gradient(45deg, transparent, white, transparent);
+            border-radius: 50%;
+            opacity: 0;
+            animation: shootingStar 3s linear infinite;
+            z-index: -1;
+        }
+
+        .shooting-star:nth-child(1) {
+            top: 20%;
+            left: 10%;
+            animation-delay: 0s;
+            animation-duration: 2.5s;
+        }
+
+        .shooting-star:nth-child(2) {
+            top: 40%;
+            left: 30%;
+            animation-delay: 8s;
+            animation-duration: 3s;
+        }
+
+        .shooting-star:nth-child(3) {
+            top: 70%;
+            left: 60%;
+            animation-delay: 15s;
+            animation-duration: 2.8s;
+        }
+
+        @keyframes shootingStar {
+            0% {
+                opacity: 0;
+                transform: translateX(0) translateY(0) rotate(45deg);
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+                transform: translateX(300px) translateY(300px) rotate(45deg);
+            }
+        }
+
+        .signup-container {
+            background: linear-gradient(135deg, #2d3561 0%, #1f2544 100%);
+            border: 6px solid #fff;
+            box-shadow: 
+                0 0 0 6px #000,
+                0 15px 40px rgba(0, 0, 0, 0.6),
+                inset 0 0 30px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            width: 450px;
+            position: relative;
+            z-index: 1;
+            animation: slideDown 0.8s ease-out;
+        }
+
+        /* Light Mode Signup Container */
+        body.light .signup-container {
+            background: linear-gradient(135deg, #ffffff 0%, #f7fafc 100%);
+            border: 6px solid #fff;
+            color: #2d3748;
+            box-shadow: 
+                0 0 0 6px #000,
+                0 15px 40px rgba(0, 0, 0, 0.2),
+                inset 0 0 30px rgba(66, 153, 225, 0.1);
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Pixel corners */
+        .signup-container::before,
+        .signup-container::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #ffed4e;
+        }
+
+        .signup-container::before {
+            top: -6px;
+            left: -6px;
+            box-shadow: 0 0 0 6px #000;
+        }
+
+        .signup-container::after {
+            bottom: -6px;
+            right: -6px;
+            box-shadow: 0 0 0 6px #000;
+        }
+
+        /* Light Mode Corner Boxes */
+        body.light .signup-container::before,
+        body.light .signup-container::after {
+            background: #ffed4e;
+        }
+
+        h1 {
+            color: #ffed4e;
+            font-size: 20px;
+            text-align: center;
+            margin-bottom: 40px;
+            text-shadow: 
+                3px 3px 0 #000,
+                5px 5px 0 rgba(0, 0, 0, 0.3);
+            line-height: 1.6;
+            letter-spacing: 1px;
+        }
+
+        /* Light Mode h1 */
+        body.light h1 {
+            color: #ffed4e;
+            text-shadow: 
+                3px 3px 0 #000,
+                5px 5px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            color: #ffed4e;
+            font-size: 12px;
+            margin-bottom: 12px;
+            text-shadow: 2px 2px 0 #000;
+            letter-spacing: 1px;
+        }
+
+        /* Light Mode Labels */
+        body.light label {
+            color: #4299e1;
+            text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        input {
+            background: #0f1419;
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000, inset 0 4px 8px rgba(0, 0, 0, 0.5);
+            color: #ffed4e;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 14px;
+            padding: 15px;
+            margin-bottom: 25px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        /* Light Mode Input Fields */
+        body.light input {
+            background: #f7fafc;
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000, inset 0 4px 8px rgba(0, 0, 0, 0.1);
+            color: #2d3748;
+        }
+
+        input:focus {
+            border-color: #ffed4e;
+            box-shadow: 0 0 0 4px #000, 
+                        inset 0 4px 8px rgba(0, 0, 0, 0.5),
+                        0 0 20px rgba(255, 237, 78, 0.5);
+        }
+
+        /* Light Mode Input Focus */
+        body.light input:focus {
+            border-color: #4299e1;
+            box-shadow: 0 0 0 4px #000, 
+                        inset 0 4px 8px rgba(0, 0, 0, 0.1),
+                        0 0 20px rgba(66, 153, 225, 0.5);
+        }
+
+        input::placeholder {
+            color: #4a5568;
+            font-size: 10px;
+        }
+
+        /* Light Mode Input Placeholder */
+        body.light input::placeholder {
+            color: #718096;
+        }
+
+        button {
+            background: linear-gradient(180deg, #f7b731 0%, #f39c12 100%);
+            color: white;
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000, 0 6px 0 #000;
+            padding: 18px;
+            font-size: 16px;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-weight: bold;
+            font-family: 'Press Start 2P', cursive;
+            margin-top: 10px;
+            position: relative;
+            transition: all 0.1s;
+            letter-spacing: 2px;
+        }
+
+        /* Light Mode Button */
+        body.light button {
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000, 0 6px 0 #000;
+        }
+
+        button:hover {
+            background: linear-gradient(180deg, #ffc741 0%, #ffac22 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 0 0 4px #000, 0 8px 0 #000;
+        }
+
+        /* Light Mode Button Hover */
+        body.light button:hover {
+            box-shadow: 0 0 0 4px #000, 0 8px 0 #000;
+        }
+
+        button:active {
+            transform: translateY(2px);
+            box-shadow: 0 0 0 4px #000, 0 2px 0 #000;
+        }
+
+        /* Light Mode Button Active */
+        body.light button:active {
+            box-shadow: 0 0 0 4px #000, 0 2px 0 #000;
+        }
+
+        /* Floating elements */
+        .pixel-star {
+            position: absolute;
+            font-size: 20px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .star-1 { top: 8%; left: 8%; animation-delay: 0s; }
+        .star-2 { top: 15%; right: 10%; animation-delay: 1.5s; }
+        .star-3 { bottom: 12%; left: 12%; animation-delay: 2s; }
+        .star-4 { bottom: 18%; right: 8%; animation-delay: 0.5s; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(180deg); }
+        }
+
+        /* Back button */
+        .back-btn {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            background: linear-gradient(180deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000, 0 4px 0 #000;
+            padding: 12px 20px;
+            font-size: 12px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.1s;
+            z-index: 10;
+        }
+
+        .back-btn:hover {
+            background: linear-gradient(180deg, #ff7b7b 0%, #fe6a7f 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 0 0 4px #000, 0 6px 0 #000;
+        }
+
+        .back-btn:active {
+            transform: translateY(1px);
+            box-shadow: 0 0 0 4px #000, 0 2px 0 #000;
+        }
+
+        @media (max-width: 480px) {
+            .signup-container {
+                width: 90%;
+                padding: 30px 25px;
+            }
+            
+            h1 {
+                font-size: 16px;
+            }
+            
+            label {
+                font-size: 10px;
+            }
+            
+            input {
+                font-size: 12px;
+                padding: 12px;
+            }
+            
+            button {
+                font-size: 14px;
+            }
+
+            .back-btn {
+                top: 15px;
+                left: 15px;
+                padding: 10px 15px;
+                font-size: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Shooting Stars for Dark Mode -->
+    <div class="shooting-star"></div>
+    <div class="shooting-star"></div>
+    <div class="shooting-star"></div>
+
+    <a href="index.html" class="back-btn">◄ BACK</a>
+
+    <div class="pixel-star star-1">⭐</div>
+    <div class="pixel-star star-2">⭐</div>
+    <div class="pixel-star star-3">⭐</div>
+    <div class="pixel-star star-4">⭐</div>
+
+    <div class="signup-container">
+        <h1>CREATE PLAYER</h1>
+        <form action="/signup" method="POST">
+            <label for="username">► USERNAME:</label>
+            <input type="text" id="username" name="username" placeholder="CREATE USERNAME" required />
+            
+            <label for="password">► PASSWORD:</label>
+            <input type="password" id="password" name="password" placeholder="CREATE PASSWORD" required />
+            
+            <button type="submit">► PLAY</button>
+            <div id="signupError" style="color: #ff6b6b; margin-top: 10px; display: none;"></div>
+        </form>
+    </div>
+</body>
+<script>
+    document.querySelector('form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const data = new URLSearchParams(new FormData(form));
+
+        try {
+            const res = await fetch(form.action, {
+            method: 'POST',
+            body: data,
+            redirect: 'manual',
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+
+            const json = await res.json();
+
+            if (res.ok && json?.redirect) {
+            window.location.href = json.redirect;
+            } else {
+            const errEl = document.getElementById('signupError');
+            errEl.textContent = json.error || 'signup failed';
+            errEl.style.display = 'block';
+            }
+        } catch (err) {
+            const errEl = document.getElementById('signupError');
+            errEl.textContent = 'An unexpected error occurred';
+            errEl.style.display = 'block';
+            console.error('signup error:', err);
+        }
+    });
+</script>
+</html>
