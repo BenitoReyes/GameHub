@@ -139,7 +139,7 @@ npm run dev
 
 ## 🧪 Testing
 
-- Backend test files: `simulate_battleship_test.js`, `test_drop4.js`
+- Backend test files:  `test_drop4.js`
 - Use `node` to run individual test scripts.
 - Frontend testing setup TBD (consider integrating Vitest or Jest).
 
