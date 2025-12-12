@@ -1675,19 +1675,25 @@
         });
 
         socket.on('favorite-games-response', (games) => {
-            const container = document.getElementById('favorite-games');
-            if (container) {
-                container.innerHTML = games.map(game => `
-                <div class="game-card">
-                    <div class="game-info">
+    const container = document.getElementById('favorite-games');
+    if (container) {
+        container.innerHTML = games.map(game => {
+            const isScoreGame = ['sliceWorld', 'pigLaunch'].includes(game.gameType);
+            const statLabel = isScoreGame ? `${game.wins} high score` : `${game.wins} wins`;
+
+            return `
+            <div class="game-card">
+                <div class="game-info">
                     <h3 class="game-title">${game.gameType}</h3>
-                    <p class="game-hours">${game.wins} wins</p>
+                    <p class="game-hours">${statLabel}</p>
                     <span class="badge outline">Favorite</span>
-                    </div>
                 </div>
-                `).join('');
-            }
-        });
+            </div>
+            `;
+        }).join('');
+    }
+});
+
     </script>
     <!-- Theme Toggle Script -->
     <script src="../Assets/theme.js"></script>
