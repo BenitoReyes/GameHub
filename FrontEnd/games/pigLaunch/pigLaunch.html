@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>GameHub - Pig Launch</title>
+    <script src="../../Assets/theme.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background: linear-gradient(180deg, #1a1a2e 0%, #0f3460 100%);
+            color: #ffffff;
+            overflow: hidden;
+            position: relative;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100vh;
+            transition: background 0.3s ease;
+        }
+
+        /* Light Mode */
+        body.light {
+            background: linear-gradient(180deg, #87CEEB 0%, #B0E0E6 100%);
+        }
+
+        /* Animated stars background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 200%;
+            height: 200%;
+            background-image: 
+                radial-gradient(2px 2px at 20% 30%, white, transparent),
+                radial-gradient(2px 2px at 60% 70%, white, transparent),
+                radial-gradient(1px 1px at 50% 50%, white, transparent),
+                radial-gradient(1px 1px at 80% 10%, white, transparent),
+                radial-gradient(2px 2px at 90% 60%, white, transparent);
+            background-size: 200px 200px;
+            animation: stars 25s linear infinite;
+            opacity: 0.5;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Light Mode Clouds */
+        body.light::before {
+            background: radial-gradient(ellipse 100px 40px at 10% 20%, rgba(255,255,255,0.5) 0%, transparent 100%),
+                        radial-gradient(ellipse 120px 50px at 30% 15%, rgba(255,255,255,0.4) 0%, transparent 100%),
+                        radial-gradient(ellipse 80px 35px at 70% 25%, rgba(255,255,255,0.5) 0%, transparent 100%),
+                        radial-gradient(ellipse 100px 45px at 85% 18%, rgba(255,255,255,0.4) 0%, transparent 100%);
+            background-size: 300px 100px;
+            background-image: 
+                radial-gradient(ellipse 100px 40px at 10% 20%, rgba(255,255,255,0.5), transparent),
+                radial-gradient(ellipse 120px 50px at 30% 15%, rgba(255,255,255,0.4), transparent),
+                radial-gradient(ellipse 80px 35px at 70% 25%, rgba(255,255,255,0.5), transparent),
+                radial-gradient(ellipse 100px 45px at 85% 18%, rgba(255,255,255,0.4), transparent);
+            animation: clouds 30s linear infinite;
+            opacity: 0.8;
+        }
+
+        @keyframes stars {
+            from { transform: translateY(0) translateX(0); }
+            to { transform: translateY(-200px) translateX(-100px); }
+        }
+
+        @keyframes clouds {
+            from { transform: translateX(0); }
+            to { transform: translateX(-300px); }
+        }
+
+        /* Game Container */
+        #game-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 1200px;
+            height: 85vh;
+            margin-top: 40px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 4px solid #fff;
+            border-radius: 0px;
+            box-shadow: 0 0 0 4px #000, 0 4px 0 #000;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        body.light #game-container {
+            background: rgba(255, 255, 255, 0.9);
+            border: 4px solid #000;
+            box-shadow: 0 0 0 4px #fff, 0 4px 0 #fff;
+        }
+
+        /* Game Canvas */
+        #gameCanvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            border: none;
+            background: linear-gradient(180deg, #87CEEB 0%, #B0E0E6 100%);
+            cursor: crosshair;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Clouds animation inside game container */
+        #game-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 200%;
+            height: 100%;
+            background: 
+                radial-gradient(ellipse 120px 50px at 10% 20%, rgba(255,255,255,0.8), transparent),
+                radial-gradient(ellipse 100px 40px at 25% 25%, rgba(255,255,255,0.7), transparent),
+                radial-gradient(ellipse 140px 60px at 45% 15%, rgba(255,255,255,0.8), transparent),
+                radial-gradient(ellipse 110px 45px at 70% 22%, rgba(255,255,255,0.7), transparent),
+                radial-gradient(ellipse 130px 55px at 90% 18%, rgba(255,255,255,0.8), transparent);
+            animation: moveClouds 60s linear infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        @keyframes moveClouds {
+            from { transform: translateX(0); }
+            to { transform: translateX(-50%); }
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+            border-bottom: 4px solid #4299e1;
+            box-shadow: 0 4px 0 #2b77cb, 0 8px 20px rgba(66, 153, 225, 0.3);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            transition: background 0.3s ease;
+        }
+
+        body.light .header {
+            background: linear-gradient(135deg, #d6eaff 0%, #b3d9ff 100%);
+        }
+
+        .game-title {
+            color: #ffffff;
+            font-size: 20px;
+            text-shadow: 2px 2px 0 #000000;
+            transition: color 0.3s ease, text-shadow 0.3s ease;
+        }
+
+        body.light .game-title {
+            color: #2d3748;
+            text-shadow: 2px 2px 0 #bee3f8;
+        }
+
+        .header-right {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .score-display {
+            color: #fbbf24;
+            font-size: 14px;
+            text-shadow: 1px 1px 0 #000000;
+            transition: color 0.3s ease, text-shadow 0.3s ease;
+        }
+
+        body.light .score-display {
+            color: #2d3748;
+            text-shadow: 1px 1px 0 #bee3f8;
+        }
+
+        .level-display {
+            color: #fbbf24;
+            font-size: 14px;
+            text-shadow: 1px 1px 0 #000000;
+            transition: color 0.3s ease, text-shadow 0.3s ease;
+        }
+
+        body.light .level-display {
+            color: #2d3748;
+            text-shadow: 1px 1px 0 #bee3f8;
+        }
+
+        .back-btn {
+            background: linear-gradient(180deg, #fc8181 0%, #f56565 100%);
+            color: white;
+            border: 3px solid #e53e3e;
+            box-shadow: 0 0 0 3px #c53030, 0 4px 0 #c53030;
+            padding: 10px 20px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.1s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .back-btn:hover {
+            background: linear-gradient(180deg, #feb2b2 0%, #fc8181 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 0 0 3px #c53030, 0 5px 0 #c53030;
+        }
+
+        /* Pig Selection Panel */
+        .pig-selection {
+            position: fixed;
+            top: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000, 0 4px 0 #000;
+            padding: 15px;
+            border-radius: 0px;
+            z-index: 150;
+        }
+
+        .pig-btn {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #fbb6ce 0%, #f687b3 100%);
+            border: 4px solid #d53f8c;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            box-shadow: 0 4px 0 #c53030;
+        }
+
+        .pig-btn:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 0 #c53030;
+        }
+
+        .pig-btn.selected {
+            background: linear-gradient(135deg, #fcd34d 0%, #fbbf24 100%);
+            border-color: #d69e2e;
+            box-shadow: 0 4px 0 #b7791f, 0 0 20px rgba(251, 191, 36, 0.5);
+        }
+
+        .pig-name {
+            font-size: 6px;
+            margin-top: 4px;
+            color: #2d3748;
+        }
+
+        /* Game Info */
+        .game-info {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000;
+            padding: 20px;
+            border-radius: 0px;
+            z-index: 150;
+            width: 250px;
+        }
+
+        .info-title {
+            color: #fbbf24;
+            font-size: 12px;
+            margin-bottom: 15px;
+            text-align: center;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        .info-section {
+            margin: 10px 0;
+            font-size: 8px;
+            color: #e6eef8;
+            line-height: 1.6;
+        }
+
+        .material-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 5px 0;
+            color: #e6eef8;
+        }
+
+        .material-icon {
+            font-size: 16px;
+        }
+
+        /* Controls Info */
+        .controls {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000;
+            padding: 20px;
+            border-radius: 0px;
+            z-index: 150;
+            width: 200px;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 25px;
+            height: 25px;
+            background: #ef4444;
+            border: 2px solid #fff;
+            color: #fff;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.1s;
+            font-family: Arial, sans-serif;
+            line-height: 1;
+        }
+
+        .close-btn:hover {
+            background: #dc2626;
+            transform: scale(1.1);
+        }
+
+        .controls-title {
+            color: #fbbf24;
+            font-size: 12px;
+            margin-bottom: 15px;
+            text-align: center;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        .control-item {
+            font-size: 8px;
+            color: #e6eef8;
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+
+        /* Level Complete Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 6px solid #fff;
+            box-shadow: 0 0 0 6px #000, 0 8px 0 #000;
+            padding: 40px;
+            border-radius: 0px;
+            text-align: center;
+            animation: slideDown 0.5s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-title {
+            color: #fbbf24;
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        .modal-text {
+            color: #e6eef8;
+            font-size: 12px;
+            margin: 15px 0;
+        }
+
+        .modal-btn {
+            background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%);
+            color: #000;
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000, 0 4px 0 #000;
+            padding: 16px 32px;
+            margin: 10px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.1s;
+        }
+
+        .modal-btn:hover {
+            background: linear-gradient(180deg, #fcd34d 0%, #fbbf24 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 0 0 4px #000, 0 6px 0 #000;
+        }
+
+        .level-display {
+            color: #4299e1;
+            font-size: 14px;
+            text-shadow: 1px 1px 0 #bee3f8;
+        }
+
+        /* Victory Modal Styling */
+        .victory-content {
+            background: linear-gradient(180deg, #ffd700 0%, #ffed4e 100%);
+            border: 6px solid #ff8c00;
+            box-shadow: 0 0 0 6px #cc7000, 
+                        0 10px 0 #cc7000,
+                        0 0 40px rgba(255, 215, 0, 0.8);
+            animation: victoryPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes victoryPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        .victory-title {
+            font-size: 32px;
+            color: #ff8c00;
+            text-shadow: 3px 3px 0 #cc7000, 
+                         -1px -1px 0 #ff0000,
+                         1px -1px 0 #ff0000,
+                         -1px 1px 0 #ff0000,
+                         1px 1px 0 #ff0000;
+            animation: victoryShake 0.5s ease-in-out infinite;
+        }
+
+        @keyframes victoryShake {
+            0%, 100% { transform: rotate(-1deg); }
+            50% { transform: rotate(1deg); }
+        }
+
+        .victory-text {
+            color: #ff8c00;
+            text-shadow: 2px 2px 0 #cc7000;
+            font-size: 18px;
+            margin: 15px 0;
+        }
+
+        .victory-crown {
+            font-size: 80px;
+            animation: crownBounce 1s ease-in-out infinite;
+            margin: 20px 0;
+        }
+
+        @keyframes crownBounce {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-10px) rotate(-5deg); }
+            75% { transform: translateY(-10px) rotate(5deg); }
+        }
+
+        .victory-btn {
+            background: linear-gradient(180deg, #48bb78 0%, #38a169 100%);
+            border: 4px solid #2f855a;
+            box-shadow: 0 0 0 4px #276749, 0 6px 0 #276749;
+        }
+
+        .victory-btn:hover {
+            background: linear-gradient(180deg, #68d391 0%, #48bb78 100%);
+            box-shadow: 0 0 0 4px #276749, 0 8px 0 #276749;
+        }
+
+        /* Mobile Orientation Warning */
+        #orientationWarning {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            gap: 30px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        #orientationWarning.show {
+            display: flex;
+        }
+
+        .orientation-icon {
+            font-size: 80px;
+            animation: rotate-phone 2s ease-in-out infinite;
+        }
+
+        @keyframes rotate-phone {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(90deg); }
+        }
+
+        .orientation-text {
+            color: #fbbf24;
+            font-size: 16px;
+            line-height: 1.8;
+            max-width: 400px;
+        }
+
+        @media (max-width: 768px) {
+            .game-info, .controls {
+                display: none;
+            }
+
+            .header {
+                padding: 10px;
+            }
+
+            .game-title {
+                font-size: 14px;
+            }
+
+            .level-display, .score-display {
+                font-size: 10px;
+            }
+
+            .back-btn {
+                font-size: 8px;
+                padding: 8px 12px;
+            }
+
+            .pig-selection {
+                top: 100px;
+                padding: 10px;
+                gap: 10px;
+            }
+
+            .pig-btn {
+                width: 60px;
+                height: 60px;
+                font-size: 24px;
+            }
+
+            .pig-name {
+                font-size: 5px;
+            }
+
+            .modal-title {
+                font-size: 18px;
+            }
+
+            .modal-text {
+                font-size: 10px;
+            }
+
+            .modal-btn {
+                font-size: 10px;
+                padding: 12px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Mobile Orientation Warning -->
+    <div id="orientationWarning">
+        <div class="orientation-icon">📱</div>
+        <div class="orientation-text">
+            For the best experience,<br>
+            please rotate your device<br>
+            to landscape mode!
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="header">
+        <h1 class="game-title">🐷 PIG LAUNCH</h1>
+        <div class="header-right">
+            <div class="level-display">Level: <span id="levelNum">1</span></div>
+            <div class="score-display">Score: <span id="score">0</span></div>
+            <a href="pigLaunchMenu.html" class="back-btn">← BACK</a>
+        </div>
+    </div>
+
+    <!-- Game Container -->
+    <div id="game-container">
+        <!-- Game Canvas -->
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <!-- Controls Info -->
+    <div class="controls">
+        <button class="close-btn" onclick="this.parentElement.style.display='none'">✕</button>
+        <div class="controls-title">CONTROLS</div>
+        <div class="control-item">🖱️ Click & drag to aim</div>
+        <div class="control-item">🚀 Release to launch</div>
+        <div class="control-item">⚡ Click pig mid-air to activate ability</div>
+        <div class="control-item">🔄 R to restart level</div>
+    </div>
+
+    <!-- Game Info -->
+    <div class="game-info">
+        <button class="close-btn" onclick="this.parentElement.style.display='none'">✕</button>
+        <div class="info-title">MATERIALS</div>
+        <div class="material-info">
+            <span class="material-icon">🧊</span>
+            <span>Ice - Fragile (HP: 50)</span>
+        </div>
+        <div class="material-info">
+            <span class="material-icon">🪵</span>
+            <span>Wood - Medium (HP: 100)</span>
+        </div>
+        <div class="material-info">
+            <span class="material-icon">🔩</span>
+            <span>Metal - Strong (HP: 200)</span>
+        </div>
+        <div class="info-section" style="margin-top: 20px;">
+            <div class="info-title" style="margin-bottom: 10px;">TIP</div>
+            Destroy all birds to win!
+        </div>
+    </div>
+
+    <!-- Pig Selection Panel -->
+    <div class="pig-selection">
+        <div class="pig-btn selected" data-pig="splitter">
+            🐷
+            <div class="pig-name">SPLITTER</div>
+        </div>
+        <div class="pig-btn" data-pig="speedy">
+            🐽
+            <div class="pig-name">SPEEDY</div>
+        </div>
+        <div class="pig-btn" data-pig="screamer">
+            🐖
+            <div class="pig-name">SCREAMER</div>
+        </div>
+        <div class="pig-btn" data-pig="bomber">
+            💣
+            <div class="pig-name">BOMBER</div>
+        </div>
+    </div>
+
+    <!-- Level Complete Modal -->
+    <div id="levelCompleteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">🎉 LEVEL COMPLETE! 🎉</div>
+            <div class="modal-text">Level Score: <span id="modalScore">0</span></div>
+            <button class="modal-btn" onclick="nextLevel()">NEXT LEVEL</button>
+            <button class="modal-btn" onclick="restartLevel()">RESTART</button>
+        </div>
+    </div>
+
+    <!-- Victory Modal -->
+    <div id="victoryModal" class="modal">
+        <div class="modal-content victory-content">
+            <div class="modal-title victory-title">🏆 YOU WON! 🏆</div>
+            <div class="modal-text victory-text">🎊 CONGRATULATIONS! 🎊</div>
+            <div class="modal-text">You defeated all levels!</div>
+            <div class="modal-text">Total Score: <span id="victoryScore">0</span></div>
+            <div class="victory-crown">👑</div>
+            <button class="modal-btn victory-btn" onclick="playAgain()">PLAY AGAIN</button>
+            <button class="modal-btn" onclick="location.href='pigLaunchMenu.html'">BACK TO MENU</button>
+        </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div id="gameOverModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">💀 GAME OVER 💀</div>
+            <div class="modal-text">Out of pigs!</div>
+            <div class="modal-text">Score: <span id="gameOverScore">0</span></div>
+            <button class="modal-btn" onclick="restartLevel()">TRY AGAIN</button>
+            <button class="modal-btn" onclick="location.href='pigLaunchMenu.html'">MENU</button>
+        </div>
+    </div>
+
+    <script src="pigLaunchLogic.js"></script>
+    <script>
+        // Mobile orientation detection
+        function checkOrientation() {
+            const warning = document.getElementById('orientationWarning');
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+            if (isMobile) {
+                // Show warning if in portrait mode
+                if (window.innerHeight > window.innerWidth) {
+                    warning.classList.add('show');
+                } else {
+                    warning.classList.remove('show');
+                }
+            }
+        }
+
+        // Check orientation on load and resize
+        window.addEventListener('load', checkOrientation);
+        window.addEventListener('resize', checkOrientation);
+        window.addEventListener('orientationchange', checkOrientation);
+
+        // Fallback error handler
+        window.addEventListener('error', function(e) {
+            console.error('Error loading game:', e);
+            document.body.innerHTML += '<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border:3px solid red;font-family:Arial;color:red;z-index:9999;">Error loading game! Check console for details.</div>';
+        });
+    </script>
+</body>
+</html>
