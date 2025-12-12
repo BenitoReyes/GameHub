@@ -1,80 +1,182 @@
-# GameHub  
+# 🕹️ GAMEHUB
 
-A real-time, two-player Connect Four game built with Node.js, Express, Socket.IO, and StreamChat. Players are assigned roles (Red or Yellow) and can compete head-to-head while chatting in-game via a dedicated chat channel.
+GAMEHUB is a modular, full-stack game platform supporting multiplayer experiences, AI simulations, and real-time chat. Built with scalability and maintainability in mind, it features a clean separation between frontend and backend logic, Prisma ORM for database management, and sprint-based development documentation.
 
-##  Features
+---
 
-- Real-time multiplayer gameplay using Socket.IO
-- Role assignment and turn-based logic
-- In-game chat powered by StreamChat (`messaging` channel type)
-- Simple UI with Connect Four board and chat interface
-- Secure backend token generation for StreamChat authentication
+## 📁 Project Structure
 
-##  Tech Stack
-
-- **Frontend**: HTML, CSS, Vanilla JS
-- **Backend**: Node.js, Express, Socket.IO, Neon, Prisma
-- **Chat**: StreamChat SDK (client + server)
-- **Deployment**: Localhost or cloud platform Render
-
-##  Setup Instructions
-
-1. Clone the repo:
-   ```bash
-   git clone https://github.com/BenitoReyes/Connect-Four-Online.git
-   cd Connect-Four-Online
-   
-2. Install dependencies:
-  npm install
-
-3. Create a .env file in /BackEnd
-
-  STREAM_API_KEY= streamChat_api_key
-  STREAM_API_SECRET= streamChat_api_secret
-  DATABASE_URL = neon secrets
-  PRISMA_KEY= prisma api key
-
-4.  Run the server:
-   node BackEnd/server.js
-
-5. Open your browser at:
-   http://localhost:3000
-
-GameHub/
-
-├── Assets/              # Game piece images
-
-├── BackEnd/             # Express + Socket.IO + StreamChat server
-
-│  └── server.js
-
-├── FrontEnd/            # Game board UI and chat logic 
-
-│   └── index.html
-
-│   └── board.html
-
-│   └── gameCreate.html
-
-│   └── joinGame.html
-
-│   └── login.html
-
+```
+GAMEHUB/
+├── .vscode/                          # VSCode workspace settings
+├── BackEnd/                          # Server-side logic
+│   ├── AI/                           # AI modules and simulations
+│   │   └── drop4.js
+│   └── games/                        # Game-specific backend logic
+│       ├── drop4/
+│       │   └── index.js
+│       ├── sinkEm/
+│       │   └── index.js
+│       │   ├── index.js
+│       │   ├── server.js
+│       │   ├── simulate_battleship_test.js
+│       │   └── test_drop4.js
+├── FrontEnd/                         # Client-side UI and game logic
+│   ├── ai/
+│   │   └── connect4Agent.js
+│   ├── Assets/                       # Static assets
+│   │   ├── GHCCoin.png
+│   │   ├── GHRBCoin.png
+│   │   ├── styles.css
+│   │   └── theme.js
+│   ├── games/
+│   │   ├── commonLogic/              # Shared frontend logic
+│   │   │   ├── chat.js
+│   │   │   ├── cookie.js
+│   │   │   ├── socket.js
+│   │   │   └── ui.js
+│   │   ├── drop4/
+│   │   │   ├── drop4.html
+│   │   │   ├── drop4JoinGame.html
+│   │   │   ├── drop4Leaderboard.html
+│   │   │   ├── drop4logic.js
+│   │   │   ├── drop4Menu.html
+│   │   │   ├── drop4SinglePlayer.html
+│   │   │   └── game.js
+│   │   ├── pigLaunch/
+│   │   │   ├── pigLaunch.html
+│   │   │   ├── pigLaunchLeaderboard.html
+│   │   │   ├── pigLaunchLogic.js
+│   │   │   └── pigLaunchMenu.html
+│   │   ├── sinkEm/
+│   │   │   ├── game.js
+│   │   │   ├── sinkEmJoinGame.html
+│   │   │   ├── sinkEmLeaderboard.html
+│   │   │   ├── sinkEmLogic.js
+│   │   │   └── sinkEmMenu.html
+│   │   └── sliceWorld/
+│   │       ├── assets/
+│   │       │   ├── alien.png
+│   │       │   ├── earth_vector.png
+│   │       │   ├── neptune.png
+│   │       │   ├── Portrait_Placeholder.png
+│   │       │   ├── reactor.png
+│   │       │   └── saturn.png
+│   │       ├── game.js
+│   │       ├── sliceWorld.css
+│   │       ├── sliceWorld.html
+│   │       ├── sliceWorldLeaderboard.html
+│   │       ├── sliceWorldLogic.js
+│   │       └── sliceWorldMenu.html
+├── login-signup/                     # Authentication UI
+│   ├── index.html
+│   ├── login.html
 │   └── signUp.html
+├── Profile/                          # User profile pages
+│   ├── profile.html
+│   └── settings.html
+├── streamChat/                       # Real-time chat interface
+│   ├── chat-entry.js
+│   ├── stream-chat.bundle.js
+│   └── homepage.html
+├── node_modules/                     # Node.js dependencies
+├── prisma/                           # Prisma ORM setup
+│   ├── schema.prisma
+│   ├── Scripts/
+│   └── migrations/
+├── Sprints/                          # Development documentation
+│   ├── docs/
+│   │   ├── ARCHITECTURE.md
+│   │   ├── Database ERD.png
+│   │   └── README.md
+│   ├── Sprint 1/
+│   │   ├── AI Usage Log Sprint 1.pdf
+│   │   ├── Sprint 1 Retrospective.pdf
+│   │   └── Sprint 1 Review.pdf
+│   ├── Sprint 2/
+│   │   ├── Sprint 2 AI log.pdf
+│   │   ├── Sprint 2 retrospective.pdf
+│   │   └── Sprint 2 Review.pdf
+│   └── Sprint3/
+│   │   ├── Sprint 3 AI log.pdf
+│   │   ├── Sprint 3 retrospective.pdf
+│   │   └── Sprint 3 Review.pdf
+├── homepage.html                     # Entry point for the frontend
+├── .env                              # Environment variables
+├── .gitignore                        # Git configuration
+├── package.json                      # Project metadata and scripts
+├── package-lock.json                 # Dependency lock file
+└── vite.config.js                    # Vite bundler configuration
+```
 
-│   └──  script.js       
+---
 
-│   └── styles.css
+## 🚀 Getting Started
 
-│   └── streamchat-bundle.js #initializes the browser version of streamchat to the browser 
+### 1. Install Dependencies
 
-│   └── chat-entry.js #used by vite to bundle streamchat in a browser friendly version 
+```bash
+npm renderBuild
+```
 
-├── docs/
+### 2. Set Up Environment
 
-│   └── README.md
+Create a `.env` file based on `.env.example` and configure your database and server settings.
 
-│   └── ARCHITECTURE.md
+### 3. Run the Backend
 
-|   └── Database ERD.pdf
+```bash
+node BackEnd/games/server.js
+```
+
+### 4. Run the Frontend
+
+```bash
+npm run dev
+```
+
+---
+
+## 🧪 Testing
+
+- Backend test files: `simulate_battleship_test.js`, `test_drop4.js`
+- Use `node` to run individual test scripts.
+- Frontend testing setup TBD (consider integrating Vitest or Jest).
+
+---
+
+## 🧠 AI Integration
+
+- Backend AI logic lives in `BackEnd/AI`
+- Frontend AI interfaces in `FrontEnd/ai`
+- Designed for modular expansion across games.
+
+---
+
+## 📦 Database
+
+- Managed via Prisma
+- Schema defined in `prisma/schema.prisma`
+- Migrations tracked in `prisma/migrations`
+
+---
+
+## 📚 Sprint Documentation
+
+- Iterative development tracked in `Sprints/`
+- Each sprint folder contains planning, retrospectives, and feature breakdowns.
+
+---
+
+## 💬 Real-Time Features
+
+- `streamChat` handles socket-based chat
+- Backend attendance and presence logic integrated with game sessions
+
+---
+
+## 🛠️ Build Tools
+
+- Vite for fast frontend bundling
+- Node.js for backend runtime
 
