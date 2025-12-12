@@ -202,7 +202,7 @@ app.post('/signup', async (req, res) => {
     const token = serverClient.createToken(userId);
 
     console.log('User created with ID:', userId);
-    setAuthCookies(res, userId, toke, username );
+    setAuthCookies(res, userId, token, username );
 
     if (isAjax(req)) {
       return res.json({ success: true, redirect: '/homepage.html' });
