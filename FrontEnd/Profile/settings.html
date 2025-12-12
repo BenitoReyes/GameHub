@@ -1439,7 +1439,6 @@
                                                 <button id="cancel-username-btn" class="btn btn-outline">► CANCEL</button>
                                             </div>
                                         </div>
-                                        <p class="form-helper">YOU CAN CHANGE YOUR USERNAME ONCE EVERY 30 DAYS.</p>
                                     </div>
                                 </div>
                                 <div class="separator"></div>
@@ -1459,8 +1458,13 @@
                                                 <input type="password" id="current-password" class="input" placeholder="ENTER CURRENT PASSWORD">
                                                 <button type="button" class="password-toggle" data-target="current-password">
                                                     <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 6 0z"></path>
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M2.458 12C3.732 7.943 7.523 5 12 5
+                                                            c4.478 0 8.268 2.943 9.542 7
+                                                            -1.274 4.057-5.064 7-9.542 7
+                                                            -4.477 0-8.268-2.943-9.542-7z" />
                                                     </svg>
                                                 </button>
                                             </div>
@@ -1471,8 +1475,13 @@
                                                 <input type="password" id="new-password" class="input" placeholder="ENTER NEW PASSWORD">
                                                 <button type="button" class="password-toggle" data-target="new-password">
                                                     <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 6 0z"></path>
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M2.458 12C3.732 7.943 7.523 5 12 5
+                                                            c4.478 0 8.268 2.943 9.542 7
+                                                            -1.274 4.057-5.064 7-9.542 7
+                                                            -4.477 0-8.268-2.943-9.542-7z" />
                                                     </svg>
                                                 </button>
                                             </div>
@@ -1483,8 +1492,13 @@
                                                 <input type="password" id="confirm-password" class="input" placeholder="CONFIRM NEW PASSWORD">
                                                 <button type="button" class="password-toggle" data-target="confirm-password">
                                                     <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 6 0z"></path>
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M2.458 12C3.732 7.943 7.523 5 12 5
+                                                            c4.478 0 8.268 2.943 9.542 7
+                                                            -1.274 4.057-5.064 7-9.542 7
+                                                            -4.477 0-8.268-2.943-9.542-7z" />
                                                     </svg>
                                                 </button>
                                             </div>
@@ -1496,7 +1510,7 @@
                                 <div class="separator"></div>
                             </div>
 
-                            <!-- Wallet Section -->
+                            <!-- Wallet Section 
                             <div class="settings-section">
                                 <div class="section-header">
                                     <h3 class="section-title">◆ WALLET & BALANCE</h3>
@@ -1523,7 +1537,7 @@
                                 </div>
                             </div>
                         </div>
-
+                        -->
                         <!-- Appearance Tab -->
                         <div id="appearance-tab" class="tab-content hidden">
                             <!-- Theme Section -->
@@ -1590,7 +1604,7 @@
             </div>
         </div>
     </div>
-
+    
     <!-- Toast Container -->
     <div class="toast-container" id="toast-container"></div>
     <script type="module">
@@ -1888,6 +1902,7 @@
 
 
         // Add Funds Modal
+        /*
         addFundsBtn.addEventListener('click', () => {
             addFundsModal.classList.add('active');
         });
@@ -1922,6 +1937,7 @@
             customAmountInput.value = '';
             showToast(`$${amount.toFixed(2)} ADDED TO YOUR BALANCE!`, 'success');
         }
+            */
 
         // Theme Toggle
         themeToggle.addEventListener('change', () => {
