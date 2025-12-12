@@ -1,44 +1,76 @@
-```markdown
-#  Architecture Overview
+# 🧱 GAMEHUB Architecture Overview
 
-##  Game Flow
+GAMEHUB is a modular, full-stack game platform designed for scalability, maintainability, and real-time multiplayer interaction. It features a clean separation of concerns across backend services, frontend interfaces, AI modules, and database management.
 
-1. Player connects via Socket.IO.
-2. Server assigns role (`red` or `yellow`) and tracks players.
-3. Players take turns dropping pieces on the board.
-4. Moves are broadcast to the opponent via Socket.IO.
-5. Win condition is checked locally and announced.
+---
 
-##  Chat Flow
+## 🧩 Core Components
 
-1. Backend generates StreamChat token using `socket.id` as `userId`.
-2. Token and userId are sent to frontend via `chat-auth` event.
-3. Frontend connects to StreamChat using `connectUser()`.
-4. A `gaming` channel is created or joined.
-5. Players can send and receive messages in real-time.
+- **Backend (`BackEnd/`)**
+  - `AI/`: Game-specific AI logic and simulations.
+  - `games/`: Server logic per game, including socket handling, game state management, and test scripts.
 
-##  Security & Environment
+- **Frontend (`FrontEnd/`)**
+  - `games/`: Individual game UIs and logic.
+  - `commonLogic/`: Shared utilities for chat, cookies, sockets, and UI.
+  - `Assets/`: Static assets including images, styles, and themes.
+  - `ai/`: Frontend AI agents and interfaces.
+  - `login-signup/`, `Profile/`, `streamChat/`: Auth, user profile, and chat interfaces.
 
-- `.env` file stores API secrets (never committed)
-- StreamChat token is generated server-side only
-- Frontend receives only the token and userId through requesting get from backend
-- passwords are encrypted
-##  Dependencies
+- **Database (`prisma/`)**
+  - `schema.prisma`: Defines models and relationships.
+  - `migrations/`: Tracks schema evolution.
 
-- `express` — initial HTTP server
-- `socket.io` — real-time game communication
-- `stream-chat` — chat SDK (client + server)
-- `dotenv` — environment variable management
-- 'Node' — another server for browser testing
-- 'bcrypt' — used to encrypt password 
-- 'cookie' — used to set userId and token cookies
-- 'neon' — the postgresql database being used
-- 'uuid' used to generate random userId's and roomId's
-- 'vite' — used to package streamchat bundle for browser/html usage
-- 'prisma' — used to query the database more easily
+- **Documentation (`Sprints/`)**
+  - `docs/`: Architecture, ERD, and README.
+  - `Sprint 1–3/`: Planning, retrospectives, and AI usage logs.
 
-##  Testing & CI
+---
 
-- Manual testing via browser
+## 🔄 Data Flow
 
-[Database ERD.pdf](https://github.com/user-attachments/files/22752355/Database.ERD.pdf)
+1. **Client Interaction**
+   - Users interact via HTML/CSS/JS interfaces per game.
+   - Socket connections managed through `commonLogic/socket.js`.
+
+2. **Game Lifecycle**
+   - Game state handled in `BackEnd/games/[game]/server.js`.
+   - AI simulations triggered via `BackEnd/AI/[game].js`.
+
+3. **Database Sync**
+   - Prisma ORM syncs game state, user data, and leaderboard entries.
+   - Queries and mutations defined in `schema.prisma`.
+
+4. **Real-Time Chat**
+   - `streamChat/` handles frontend chat UI.
+   - Backend socket logic integrated with game sessions.
+
+---
+
+## 🧠 AI Integration
+
+- AI agents (e.g., `connect4Agent.js`) simulate moves and strategies.
+- Backend AI modules run simulations and validate logic.
+- Designed for plug-and-play expansion across games.
+
+---
+
+## 🛠️ Build & Deployment
+
+- **Frontend**: Bundled with Vite (`vite.config.js`)
+- **Backend**: Node.js runtime
+- **Environment**: `.env` for secrets and config
+- **Package Management**: `package.json`, `package-lock.json`
+
+---
+
+## 📌 Design Principles
+
+- **Modularity**: Each game and feature is isolated for maintainability.
+- **Reusability**: Shared logic lives in `commonLogic/` and `Assets/`.
+- **Scalability**: Prisma ORM and socket architecture support multiplayer growth.
+- **Transparency**: Sprint folders document development decisions.
+
+---
+
+This architecture supports rapid iteration, clean separation of concerns, and extensibility for future games and features.
