@@ -7,18 +7,18 @@
         <link rel="stylesheet" href="../../Assets/styles.css" />
     </head>
     <body class="leaderboard-page">
-        <a href="sliceWorldMenu.html" class="back-btn">◄ BACK</a>
+        <a href="pigLaunchMenu.html" class="back-btn">◄ BACK</a>
 
         <!-- Floating chips for style consistency -->
-        <div class="floating-chip chip-1">🌍</div>
-        <div class="floating-chip chip-2">🪐</div>
-        <div class="floating-chip chip-3">🌏</div>
-        <div class="floating-chip chip-4">👾</div>
+        <div class="floating-pig pig-1">🐷</div>
+        <div class="floating-pig pig-2">🐽</div>
+        <div class="floating-pig pig-3">🐖</div>
+        <div class="floating-pig pig-4">💣</div>
 
         <!-- Leaderboard container -->
         <div class="leaderboard-container">
             <div class="icon-container">
-            <h1>Slice World Leaderboard</h1>
+            <h1>Pig Launch Leaderboard</h1>
             </div>
             <div id="leaderboardList" class="leaderboard-list">
             <!-- Leaderboard entries will be populated here -->
@@ -32,7 +32,7 @@
             import { getCookie } from '../commonLogic/cookie.js'
             const socket = getSocket();
             const userId = getCookie('userId')|| sessionStorage.getItem('userId');
-            socket.emit('request-leaderboard', { gameType: 'sliceWorld', userId});
+            socket.emit('request-leaderboard', { gameType: 'pigLaunch', userId});
 
             socket.on('leaderboard-response', ({ top10, user }) => {
             const list = document.getElementById('leaderboardList');

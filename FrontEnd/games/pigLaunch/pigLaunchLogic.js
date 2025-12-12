@@ -1,3 +1,7 @@
+import { getSocket } from '../commonLogic/socket.js';
+import { getCookie } from '../commonLogic/cookie.js'
+const socket = getSocket();
+
 // PIG LAUNCH GAME LOGIC
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -972,11 +976,27 @@ function gameLoop() {
             gameState.checkingWinCondition = true;
             setTimeout(() => {
                 showLevelComplete();
+                const userId = getCookie('userId')|| sessionStorage.getItem('userId');
+                // DISCUSS MAKING SLICE WORLD ENDGAMES COUNT AS TOTAL GAMES
+                //socket.emit('add-totalgames', userId);
+                socket.emit('leaderboard-update',({
+                    userId: userId,
+                    gameType: 'pigLaunch',
+                    score: gameState.score
+                }));
             }, 1000);
         } else if (gameState.pigsRemaining === 0) {
             gameState.checkingWinCondition = true;
             setTimeout(() => {
                 showGameOver();
+                const userId = getCookie('userId')|| sessionStorage.getItem('userId');
+                // DISCUSS MAKING SLICE WORLD ENDGAMES COUNT AS TOTAL GAMES
+                //socket.emit('add-totalgames', userId);
+                socket.emit('leaderboard-update',({
+                    userId: userId,
+                    gameType: 'pigLaunch',
+                    score: gameState.score
+                }));
             }, 1000);
         }
     }
@@ -1178,3 +1198,4 @@ window.addEventListener('load', () => {
     initLevel(1);
     gameLoop();
 });
+export { nextLevel, restartLevel, playAgain };

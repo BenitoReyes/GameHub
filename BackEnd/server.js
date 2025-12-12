@@ -819,7 +819,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('leaderboard-update', async ({userId,gameType,score})=>{
-      if(gameType=='sliceWorld'){
+      if(gameType=='sliceWorld'|| gameType == 'pigLaunch'){
         const leaderboard = await prisma.leaderboard.findUnique({
           where: {gameType_userId:{gameType: gameType, userId: userId}},
           select: {wins: true}
