@@ -674,8 +674,8 @@
         <div class="modal-content">
             <div class="modal-title">🎉 LEVEL COMPLETE! 🎉</div>
             <div class="modal-text">Level Score: <span id="modalScore">0</span></div>
-            <button class="modal-btn" onclick="nextLevel()">NEXT LEVEL</button>
-            <button class="modal-btn" onclick="restartLevel()">RESTART</button>
+            <button class="modal-btn" id="nextLevelBtn">NEXT LEVEL</button>
+            <button class="modal-btn" id="restartBtn">RESTART</button>
         </div>
     </div>
 
@@ -687,8 +687,8 @@
             <div class="modal-text">You defeated all levels!</div>
             <div class="modal-text">Total Score: <span id="victoryScore">0</span></div>
             <div class="victory-crown">👑</div>
-            <button class="modal-btn victory-btn" onclick="playAgain()">PLAY AGAIN</button>
-            <button class="modal-btn" onclick="location.href='pigLaunchMenu.html'">BACK TO MENU</button>
+            <button class="modal-btn victory-btn" id="playAgainBtn">PLAY AGAIN</button>
+            <button class="modal-btn" id="victoryMenuBtn">BACK TO MENU</button>
         </div>
     </div>
 
@@ -698,12 +698,50 @@
             <div class="modal-title">💀 GAME OVER 💀</div>
             <div class="modal-text">Out of pigs!</div>
             <div class="modal-text">Score: <span id="gameOverScore">0</span></div>
-            <button class="modal-btn" onclick="restartLevel()">TRY AGAIN</button>
-            <button class="modal-btn" onclick="location.href='pigLaunchMenu.html'">MENU</button>
+            <button class="modal-btn" id="restartGameOverBtn">TRY AGAIN</button>
+            <button class="modal-btn" id="gameOverMenuBtn">MENU</button>
         </div>
     </div>
 
-    <script src="pigLaunchLogic.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="pigLaunchLogic.js"></script>
+    <script type="module">
+        import { nextLevel, restartLevel, playAgain } from './pigLaunchLogic.js';
+        window.addEventListener('DOMContentLoaded', () => {
+            // Level Complete modal
+            document.getElementById('nextLevelBtn')
+                ?.addEventListener('click', nextLevel);
+
+            document.getElementById('restartLevelBtn')
+                ?.addEventListener('click', restartLevel);
+
+            // Victory modal
+            document.getElementById('playAgainBtn')
+                ?.addEventListener('click', playAgain);
+
+            document.getElementById('victoryMenuBtn')
+                ?.addEventListener('click', () => {
+                    window.location.href = 'pigLaunchMenu.html';
+                });
+
+            // Game Over modal
+            document.getElementById('restartGameOverBtn')
+                ?.addEventListener('click', restartLevel);
+
+            document.getElementById('gameOverMenuBtn')
+                ?.addEventListener('click', () => {
+                    window.location.href = 'pigLaunchMenu.html';
+                });
+
+            // Close buttons (generic)
+            document.querySelectorAll('.close-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    btn.parentElement.style.display = 'none';
+                });
+            });
+        });
+    </script>
+
     <script>
         // Mobile orientation detection
         function checkOrientation() {
